@@ -5,6 +5,9 @@ import { Save } from "lucide-react";
 import { updateStudentAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionState } from "@/server/actions";
 
 const initialState: ActionState = {};
@@ -27,132 +30,116 @@ export function EditStudentForm({ student }: { student: StudentEditData }) {
   return (
     <form action={formAction} className="space-y-4">
       {state.error && (
-        <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+        <div
+          role="alert"
+          className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"
+        >
           {state.error}
         </div>
       )}
       {state.ok && state.message && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
           {state.message}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label htmlFor="status" className="text-xs font-semibold text-[#F3F5F7]">
-            Situação do Aluno
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={student.status}
-            className="flex h-10 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-3 py-2 text-sm text-[#F3F5F7]"
-          >
+        <div className="space-y-1.5">
+          <Label htmlFor="status" className="text-xs text-muted-foreground">
+            Situação do aluno
+          </Label>
+          <Select id="status" name="status" defaultValue={student.status}>
             <option value="ACTIVE">Ativo</option>
             <option value="PAUSED">Pausado</option>
             <option value="ARCHIVED">Arquivado (revoga acesso ao portal)</option>
-          </select>
+          </Select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="phone" className="text-xs font-semibold text-[#F3F5F7]">
+        <div className="space-y-1.5">
+          <Label htmlFor="phone" className="text-xs text-muted-foreground">
             Telefone / WhatsApp
-          </label>
+          </Label>
           <Input
             id="phone"
             name="phone"
             defaultValue={student.phone ?? ""}
             placeholder="(11) 99999-0000"
-            className="bg-[#090B0E] border-[#242C3A]"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="birthDate" className="text-xs font-semibold text-[#F3F5F7]">
-            Data de Nascimento
-          </label>
+        <div className="space-y-1.5">
+          <Label htmlFor="birthDate" className="text-xs text-muted-foreground">
+            Data de nascimento
+          </Label>
           <Input
             id="birthDate"
             name="birthDate"
             type="date"
             defaultValue={student.birthDate ?? ""}
-            className="bg-[#090B0E] border-[#242C3A]"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="fitnessGoal" className="text-xs font-semibold text-[#F3F5F7]">
-            Objetivo de Treinamento
-          </label>
-          <select
-            id="fitnessGoal"
-            name="fitnessGoal"
-            defaultValue={student.fitnessGoal}
-            className="flex h-10 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-3 py-2 text-sm text-[#F3F5F7]"
-          >
+        <div className="space-y-1.5">
+          <Label htmlFor="fitnessGoal" className="text-xs text-muted-foreground">
+            Objetivo de treinamento
+          </Label>
+          <Select id="fitnessGoal" name="fitnessGoal" defaultValue={student.fitnessGoal}>
             <option value="HYPERTROPHY">Hipertrofia</option>
             <option value="WEIGHT_LOSS">Emagrecimento</option>
             <option value="STRENGTH">Força</option>
             <option value="HEALTH">Saúde e Condicionamento</option>
             <option value="REHABILITATION">Reabilitação</option>
-          </select>
+          </Select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="experienceLevel" className="text-xs font-semibold text-[#F3F5F7]">
-            Nível de Experiência
-          </label>
-          <select
+        <div className="space-y-1.5">
+          <Label htmlFor="experienceLevel" className="text-xs text-muted-foreground">
+            Nível de experiência
+          </Label>
+          <Select
             id="experienceLevel"
             name="experienceLevel"
             defaultValue={student.experienceLevel}
-            className="flex h-10 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-3 py-2 text-sm text-[#F3F5F7]"
           >
             <option value="BEGINNER">Iniciante</option>
             <option value="INTERMEDIATE">Intermediário</option>
             <option value="ADVANCED">Avançado</option>
-          </select>
+          </Select>
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label htmlFor="trainerNotes" className="text-xs font-semibold text-[#F3F5F7]">
-          Observações do Treinador (visível apenas para você)
-        </label>
-        <textarea
+      <div className="space-y-1.5">
+        <Label htmlFor="trainerNotes" className="text-xs text-muted-foreground">
+          Observações do treinador (visível apenas para você)
+        </Label>
+        <Textarea
           id="trainerNotes"
           name="trainerNotes"
           rows={3}
           maxLength={2000}
           defaultValue={student.trainerNotes ?? ""}
           placeholder="Anotações técnicas sobre frequência, rotina e preferências..."
-          className="w-full rounded-md border border-[#242C3A] bg-[#090B0E] p-3 text-sm text-[#F3F5F7] focus:outline-none focus:border-emerald-500"
         />
       </div>
 
-      <div className="space-y-1">
-        <label htmlFor="healthConditions" className="text-xs font-semibold text-[#F3F5F7]">
-          Restrições Físicas / Observações de Saúde (Opcional — LGPD)
-        </label>
-        <textarea
+      <div className="space-y-1.5">
+        <Label htmlFor="healthConditions" className="text-xs text-muted-foreground">
+          Restrições físicas / observações de saúde (LGPD)
+        </Label>
+        <Textarea
           id="healthConditions"
           name="healthConditions"
           rows={2}
           maxLength={1000}
           defaultValue={student.healthConditions ?? ""}
-          placeholder="Apenas limitações articulares ou recomendações informadas pelo aluno. Não substitui avaliação médica."
-          className="w-full rounded-md border border-[#242C3A] bg-[#090B0E] p-3 text-sm text-[#F3F5F7] focus:outline-none focus:border-emerald-500"
+          placeholder="Apenas limitações articulares ou recomendações informadas pelo aluno."
         />
       </div>
 
-      <div className="flex justify-end">
-        <Button
-          type="submit"
-          disabled={pending}
-          className="bg-emerald-500 hover:bg-emerald-600 text-[#090B0E] font-semibold gap-1.5"
-        >
+      <div className="flex justify-end pt-1">
+        <Button type="submit" disabled={pending}>
           <Save className="h-4 w-4" />
-          {pending ? "Salvando..." : "Salvar Alterações"}
+          {pending ? "Salvando..." : "Salvar alterações"}
         </Button>
       </div>
     </form>

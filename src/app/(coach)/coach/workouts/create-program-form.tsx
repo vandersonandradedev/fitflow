@@ -1,9 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionState } from "@/server/actions";
 import { createProgramAction } from "./actions";
 
@@ -26,7 +37,7 @@ export function CreateProgramForm({
 
   if (students.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#242C3A] p-4 text-xs text-[#9BA3AF]">
+      <div className="rounded-md border border-dashed border-border p-4 text-xs text-muted-foreground">
         Cadastre ou convide ao menos um aluno na aba <strong>Alunos</strong> antes de prescrever um programa de treinamento.
       </div>
     );
@@ -36,7 +47,7 @@ export function CreateProgramForm({
     <form action={action} className="space-y-4">
       {state.message && (
         <div
-          className={`rounded-lg border p-3 text-xs ${
+          className={`rounded-md border p-3 text-xs ${
             state.ok
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
               : "border-red-500/40 bg-red-500/10 text-red-300"
@@ -46,39 +57,37 @@ export function CreateProgramForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="studentProfileId" className="text-xs text-[#9BA3AF]">
-            Aluno Destinatário *
-          </Label>
-          <select
-            id="studentProfileId"
-            name="studentProfileId"
-            required
-            defaultValue={defaultStudentId ?? students[0]?.id ?? ""}
-            className="flex h-10 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-3 py-2 text-sm text-[#F3F5F7]"
-          >
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.email})
-              </option>
-            ))}
-          </select>
-          {state.fieldErrors?.studentProfileId && (
-            <p className="text-xs text-red-400">{state.fieldErrors.studentProfileId[0]}</p>
-          )}
-        </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="studentProfileId" className="text-xs text-muted-foreground">
+          Aluno destinatário *
+        </Label>
+        <Select
+          id="studentProfileId"
+          name="studentProfileId"
+          required
+          defaultValue={defaultStudentId ?? students[0]?.id ?? ""}
+        >
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} ({s.email})
+            </option>
+          ))}
+        </Select>
+        {state.fieldErrors?.studentProfileId && (
+          <p className="text-xs text-red-400">{state.fieldErrors.studentProfileId[0]}</p>
+        )}
+      </div>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="title" className="text-xs text-[#9BA3AF]">
-            Título do Programa *
+          <Label htmlFor="title" className="text-xs text-muted-foreground">
+            Título do programa *
           </Label>
           <Input
             id="title"
             name="title"
             required
             placeholder="Ex: Mesociclo 1 — Hipertrofia ABC"
-            className="bg-[#090B0E] border-[#242C3A] text-sm"
           />
           {state.fieldErrors?.title && (
             <p className="text-xs text-red-400">{state.fieldErrors.title[0]}</p>
@@ -86,36 +95,71 @@ export function CreateProgramForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="goal" className="text-xs text-[#9BA3AF]">
-            Foco / Objetivo do Ciclo
+          <Label htmlFor="goal" className="text-xs text-muted-foreground">
+            Foco / objetivo do ciclo
           </Label>
           <Input
             id="goal"
             name="goal"
             placeholder="Ex: Ganho de Força e Base Muscular"
-            className="bg-[#090B0E] border-[#242C3A] text-sm"
           />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="description" className="text-xs text-[#9BA3AF]">
-          Orientações Gerais ao Aluno
+        <Label htmlFor="description" className="text-xs text-muted-foreground">
+          Orientações gerais ao aluno
         </Label>
-        <textarea
+        <Textarea
           id="description"
           name="description"
           rows={2}
           placeholder="Instruções sobre aquecimento, cadência padrão e progressão de carga semanal..."
-          className="w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-3 py-2 text-sm text-[#F3F5F7]"
         />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-1">
         <Button type="submit" disabled={pending}>
-          {pending ? "Criando Programa..." : "Criar Programa e Abrir Editor"}
+          {pending ? "Criando programa..." : "Criar programa e abrir editor"}
         </Button>
       </div>
     </form>
+  );
+}
+
+export function CreateProgramDialog({
+  students,
+  defaultStudentId,
+  defaultOpen = false,
+}: {
+  students: StudentSelectOption[];
+  defaultStudentId?: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="h-4 w-4" />
+          Novo programa
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Novo programa de treinamento</DialogTitle>
+          <DialogDescription>
+            O programa inicia em rascunho para você montar os dias e publicar quando estiver pronto.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-4">
+          <CreateProgramForm
+            students={students}
+            defaultStudentId={defaultStudentId}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

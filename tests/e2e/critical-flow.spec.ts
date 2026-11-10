@@ -103,4 +103,13 @@ test.describe("FitFlow — Fluxo Crítico SaaS End-to-End", () => {
     await expect(page.getByText(/total de alunos/i)).toBeVisible();
     await expect(page.getByText(/treinos da semana/i)).toBeVisible();
   });
+
+  test("8. Verifica endpoint de manutenção e limpeza periódica (/api/cron/cleanup)", async ({ request }) => {
+    const res = await request.get("/api/cron/cleanup");
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.report).toBeDefined();
+    expect(body.report.durationMs).toBeGreaterThanOrEqual(0);
+  });
 });

@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { requireStudentContext } from "@/server/auth/session";
 
@@ -39,84 +38,84 @@ export default async function StudentProfilePage() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs text-[#9BA3AF]">Meu Perfil</p>
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F5F7]">
-          Informações Cadastrais
+        <p className="text-xs text-muted-foreground">Meu perfil</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Informações cadastrais
         </h1>
       </div>
 
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader className="p-4 pb-2 border-b border-[#242C3A]/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-lg border border-emerald-500/30">
-              {(student.user.name ?? student.user.email)
-                .substring(0, 2)
-                .toUpperCase()}
-            </div>
-            <div>
-              <CardTitle className="text-base font-bold text-[#F3F5F7]">
-                {student.user.name ?? "Aluno"}
-              </CardTitle>
-              <p className="text-xs text-[#9BA3AF]">{student.user.email}</p>
-            </div>
+      <section className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border p-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-secondary font-semibold text-sm text-primary">
+            {(student.user.name ?? student.user.email)
+              .substring(0, 2)
+              .toUpperCase()}
           </div>
-        </CardHeader>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-foreground">
+              {student.user.name ?? "Aluno"}
+            </h2>
+            <p className="truncate text-xs text-muted-foreground">{student.user.email}</p>
+          </div>
+        </div>
 
-        <CardContent className="p-4 space-y-3 text-xs">
-          <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-            <span className="text-[#9BA3AF]">Estúdio / Personal Trainer:</span>
-            <span className="font-semibold text-emerald-400">{tenant.name}</span>
+        <dl className="divide-y divide-border/70 px-4 text-xs">
+          <div className="flex items-center justify-between py-3">
+            <dt className="text-muted-foreground">Estúdio / Personal trainer</dt>
+            <dd className="font-medium text-primary">{tenant.name}</dd>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-            <span className="text-[#9BA3AF]">Objetivo Principal:</span>
-            <Badge variant="outline" className="text-[11px]">
-              {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
-            </Badge>
+          <div className="flex items-center justify-between py-3">
+            <dt className="text-muted-foreground">Objetivo principal</dt>
+            <dd>
+              <Badge variant="outline">
+                {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
+              </Badge>
+            </dd>
           </div>
 
-          <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-            <span className="text-[#9BA3AF]">Nível de Experiência:</span>
-            <span className="font-semibold text-[#F3F5F7]">
+          <div className="flex items-center justify-between py-3">
+            <dt className="text-muted-foreground">Nível de experiência</dt>
+            <dd className="font-medium text-foreground">
               {EXP_LABELS[student.experienceLevel] ?? student.experienceLevel}
-            </span>
+            </dd>
           </div>
 
           {student.phone && (
-            <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-              <span className="text-[#9BA3AF]">Telefone:</span>
-              <span className="text-[#F3F5F7]">{student.phone}</span>
+            <div className="flex items-center justify-between py-3">
+              <dt className="text-muted-foreground">Telefone</dt>
+              <dd className="font-mono tabular-nums text-foreground">{student.phone}</dd>
             </div>
           )}
 
           {student.birthDate && (
-            <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-              <span className="text-[#9BA3AF]">Data de Nascimento:</span>
-              <span className="text-[#F3F5F7]">
+            <div className="flex items-center justify-between py-3">
+              <dt className="text-muted-foreground">Data de nascimento</dt>
+              <dd className="font-mono tabular-nums text-foreground">
                 {new Date(student.birthDate).toLocaleDateString("pt-BR")}
-              </span>
+              </dd>
             </div>
           )}
 
-          <div className="flex items-center justify-between py-1 border-b border-[#242C3A]/40">
-            <span className="text-[#9BA3AF]">Data de Início:</span>
-            <span className="text-[#F3F5F7]">
+          <div className="flex items-center justify-between py-3">
+            <dt className="text-muted-foreground">Data de início</dt>
+            <dd className="font-mono tabular-nums text-foreground">
               {new Date(student.createdAt).toLocaleDateString("pt-BR")}
-            </span>
+            </dd>
           </div>
+        </dl>
 
-          {student.healthConditions && (
-            <div className="pt-2">
-              <span className="text-[#9BA3AF] block font-semibold mb-1">
-                Restrições / Observações de Saúde:
-              </span>
-              <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-amber-200">
-                {student.healthConditions}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {student.healthConditions && (
+          <div className="border-t border-border p-4">
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+              Restrições / observações de saúde
+            </p>
+            <p className="rounded-md border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-200">
+              {student.healthConditions}
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

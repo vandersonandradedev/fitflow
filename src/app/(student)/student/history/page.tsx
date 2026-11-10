@@ -1,6 +1,8 @@
-import { Clock, Flame, History, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { Clock, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { listStudentSessionHistory } from "@/modules/sessions/service";
 import { requireStudentContext } from "@/server/auth/session";
 
@@ -11,26 +13,24 @@ export default async function StudentHistoryPage() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs text-[#9BA3AF]">Histórico de Atividades</p>
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F5F7]">
-          Seus Treinos Concluídos
+        <p className="text-xs text-muted-foreground">Histórico de atividades</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Seus treinos concluídos
         </h1>
       </div>
 
       {sessions.length === 0 ? (
-        <Card className="border-[#242C3A] bg-[#12161D]">
-          <CardContent className="p-8 text-center space-y-2">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-              <History className="h-6 w-6" />
-            </div>
-            <h2 className="text-sm font-semibold text-[#F3F5F7]">
-              Nenhum treino registrado ainda
-            </h2>
-            <p className="text-xs text-[#9BA3AF]">
-              Execute e finalize uma sessão na aba <strong>Hoje</strong> para acompanhar seu histórico de cargas e volume aqui.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Nenhum treino registrado ainda"
+          description="Execute e finalize uma sessão na aba Hoje para acompanhar seu histórico de cargas e volume aqui."
+          action={
+            <Link href="/student/today">
+              <Button variant="outline" size="sm">
+                Ir para Treino de Hoje
+              </Button>
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-4">
           {sessions.map((session) => {
@@ -59,99 +59,90 @@ export default async function StudentHistoryPage() {
             );
 
             return (
-              <Card
+              <section
                 key={session.id}
-                className="border-[#242C3A] bg-[#12161D] overflow-hidden"
+                className="rounded-lg border border-border bg-card overflow-hidden"
               >
-                <CardHeader className="p-4 pb-3 border-b border-[#242C3A]/60 bg-[#161B24]">
-                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="emerald" className="text-[10px]">
-                          Concluído
-                        </Badge>
-                        <h2 className="text-base font-bold text-[#F3F5F7]">
-                          {session.trainingDay.name}
-                        </h2>
-                      </div>
-                      <p className="text-xs text-[#9BA3AF] mt-0.5 capitalize">
-                        {dateStr}
-                      </p>
+                <div className="flex flex-col gap-1.5 border-b border-border bg-popover/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="emerald">Concluído</Badge>
+                      <h2 className="text-sm font-semibold text-foreground">
+                        {session.trainingDay.name}
+                      </h2>
                     </div>
-
-                    <div className="flex items-center gap-3 text-xs">
-                      {durationMinutes && (
-                        <span className="flex items-center gap-1 font-mono text-emerald-400">
-                          <Clock className="h-3.5 w-3.5" />
-                          {durationMinutes} min
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1 font-bold text-[#F3F5F7]">
-                        <Flame className="h-3.5 w-3.5 text-amber-400" />
-                        {volumeKg.toLocaleString("pt-BR")} kg
-                      </span>
-                    </div>
+                    <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                      {dateStr}
+                    </p>
                   </div>
-                </CardHeader>
 
-                <CardContent className="p-4 space-y-3">
-                  {/* Feedback and RPE */}
+                  <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
+                    {durationMinutes && (
+                      <span className="inline-flex items-center gap-1 text-primary">
+                        <Clock className="h-3.5 w-3.5" />
+                        {durationMinutes} min
+                      </span>
+                    )}
+                    <span className="font-semibold text-foreground">
+                      {volumeKg.toLocaleString("pt-BR")} kg
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
                   {(session.perceivedExertionRpe || session.studentFeedback) && (
-                    <div className="rounded-lg border border-[#242C3A] bg-[#090B0E]/60 p-3 text-xs space-y-1">
+                    <div className="border-l-2 border-primary/50 pl-3 text-xs space-y-1">
                       {session.perceivedExertionRpe && (
-                        <p className="text-[#9BA3AF]">
-                          Esforço Subjetivo:{" "}
-                          <strong className="text-emerald-400 font-mono">
+                        <p className="text-muted-foreground">
+                          Esforço subjetivo:{" "}
+                          <strong className="font-mono text-primary">
                             RPE {session.perceivedExertionRpe}/10
                           </strong>
                         </p>
                       )}
                       {session.studentFeedback && (
-                        <p className="text-[#F3F5F7] italic flex items-start gap-1.5 pt-0.5">
-                          <MessageSquare className="h-3.5 w-3.5 text-[#647082] shrink-0 mt-0.5" />
+                        <p className="flex items-start gap-1.5 text-foreground">
+                          <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           <span>&ldquo;{session.studentFeedback}&rdquo;</span>
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Exercises & Logged Sets Breakdown */}
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#647082]">
-                      {session.exerciseLogs.length} exercícios • {totalSets} séries realizadas
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {session.exerciseLogs.length} exercícios · {totalSets} séries realizadas
                     </p>
 
-                    <div className="space-y-1.5">
+                    <ul className="divide-y divide-border/70 border-t border-border">
                       {session.exerciseLogs.map((log) => {
-                        const completedSets = log.setLogs.filter(
-                          (s) => s.completed
-                        );
+                        const completedSets = log.setLogs.filter((s) => s.completed);
                         return (
-                          <div
+                          <li
                             key={log.id}
-                            className="flex items-center justify-between rounded-lg border border-[#242C3A]/60 bg-[#090B0E]/60 px-3 py-2 text-xs"
+                            className="flex flex-col gap-1.5 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between"
                           >
-                            <span className="font-semibold text-[#F3F5F7] truncate max-w-[180px]">
+                            <span className="font-medium text-foreground">
                               {log.exercise.name}
                             </span>
 
-                            <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
                               {completedSets.map((s) => (
                                 <span
                                   key={s.id}
-                                  className="rounded bg-[#12161D] px-2 py-0.5 font-mono text-[11px] text-emerald-300 border border-emerald-500/20"
+                                  className="rounded border border-border bg-background px-2 py-0.5 font-mono text-[11px] tabular-nums text-primary"
                                 >
-                                  {Number(s.actualLoadKg)}kg x {s.actualReps}
+                                  {Number(s.actualLoadKg)}kg × {s.actualReps}
                                 </span>
                               ))}
                             </div>
-                          </div>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             );
           })}
         </div>

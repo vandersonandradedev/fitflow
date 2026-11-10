@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DAY_OF_WEEK_LABELS,
   SECTION_TYPE_LABELS,
@@ -57,55 +59,49 @@ export function AddTrainingDayForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="space-y-1">
-          <Label htmlFor="day-name" className="text-xs text-[#9BA3AF]">
-            Nome do Dia / Divisão *
-          </Label>
-          <Input
-            id="day-name"
-            name="name"
-            required
-            placeholder="Ex: Treino A — Empurrar (Push)"
-            className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
-          />
-        </div>
+      <div className="space-y-1">
+        <Label htmlFor="day-name" className="text-xs text-muted-foreground">
+          Nome do dia / divisão *
+        </Label>
+        <Input
+          id="day-name"
+          name="name"
+          required
+          placeholder="Ex: Treino A — Empurrar (Push)"
+          className="h-9 text-xs"
+        />
+      </div>
 
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label htmlFor="day-dow" className="text-xs text-[#9BA3AF]">
-            Dia da Semana *
+          <Label htmlFor="day-dow" className="text-xs text-muted-foreground">
+            Dia da semana *
           </Label>
-          <select
-            id="day-dow"
-            name="dayOfWeek"
-            defaultValue="MONDAY"
-            className="flex h-9 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 text-xs text-[#F3F5F7]"
-          >
+          <Select id="day-dow" name="dayOfWeek" defaultValue="MONDAY" className="text-xs">
             {Object.entries(DAY_OF_WEEK_LABELS).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="day-desc" className="text-xs text-[#9BA3AF]">
-            Foco / Observação do Dia
+          <Label htmlFor="day-desc" className="text-xs text-muted-foreground">
+            Foco do dia
           </Label>
-          <div className="flex gap-2">
-            <Input
-              id="day-desc"
-              name="description"
-              placeholder="Ex: Peitoral, Deltoides e Tríceps"
-              className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
-            <Button type="submit" size="sm" disabled={pending} className="h-9 shrink-0">
-              {pending ? "..." : "+ Dia"}
-            </Button>
-          </div>
+          <Input
+            id="day-desc"
+            name="description"
+            placeholder="Ex: Peitoral e tríceps"
+            className="h-9 text-xs"
+          />
         </div>
       </div>
+
+      <Button type="submit" size="sm" variant="outline" disabled={pending} className="w-full">
+        {pending ? "Adicionando..." : "Adicionar dia de treino"}
+      </Button>
     </form>
   );
 }
@@ -125,8 +121,8 @@ export function AddExerciseToDayForm({
 
   if (days.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#242C3A] p-4 text-xs text-[#9BA3AF]">
-        Adicione ao menos um <strong>Dia de Treino</strong> ao rascunho antes de prescrever exercícios.
+      <div className="rounded-md border border-dashed border-border p-4 text-xs text-muted-foreground">
+        Adicione ao menos um <strong>Dia de treino</strong> acima antes de prescrever exercícios.
       </div>
     );
   }
@@ -155,88 +151,82 @@ export function AddExerciseToDayForm({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="target-day" className="text-xs text-[#9BA3AF]">
-          1. Dia de Destino *
+      <div className="space-y-1">
+        <Label htmlFor="target-day" className="text-xs text-muted-foreground">
+          Dia de destino *
         </Label>
-        <select
+        <Select
           id="target-day"
           name="trainingDayId"
           required
           defaultValue={days[0]?.id ?? ""}
-          className="flex h-9 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 text-xs text-[#F3F5F7]"
+          className="text-xs"
         >
           {days.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name} ({d.dayOfWeekLabel})
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="ex-filter" className="text-xs text-[#9BA3AF]">
-          2. Buscar na Biblioteca ({filteredExercises.length} disponíveis)
+        <Label htmlFor="ex-filter" className="text-xs text-muted-foreground">
+          Exercício ({filteredExercises.length} disponíveis) *
         </Label>
         <Input
           id="ex-filter"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Filtrar por nome, categoria ou músculo..."
-          className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+          className="h-8 text-xs"
         />
-        <select
+        <Select
           id="exerciseId"
           name="exerciseId"
           required
           defaultValue={filteredExercises[0]?.id ?? ""}
-          className="flex h-9 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 text-xs text-[#F3F5F7]"
+          className="text-xs"
         >
           {filteredExercises.map((ex) => (
             <option key={ex.id} value={ex.id}>
-              [{ex.categoryName}] {ex.name} — {ex.primaryMuscleGroup}{" "}
-              {ex.isGlobal ? "" : "(Personalizado)"}
+              [{ex.categoryName}] {ex.name} — {ex.primaryMuscleGroup}
+              {ex.isGlobal ? "" : " (Personalizado)"}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
         <div className="space-y-1">
-          <Label htmlFor="sectionType" className="text-[11px] text-[#9BA3AF]">
-            Seção do Treino
+          <Label htmlFor="sectionType" className="text-xs text-muted-foreground">
+            Seção do treino
           </Label>
-          <select
-            id="sectionType"
-            name="sectionType"
-            defaultValue="MAIN"
-            className="flex h-8 w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2 text-xs text-[#F3F5F7]"
-          >
+          <Select id="sectionType" name="sectionType" defaultValue="MAIN" className="h-8 text-xs">
             {Object.entries(SECTION_TYPE_LABELS).map(([k, label]) => (
               <option key={k} value={k}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="supersetGroupId" className="text-[11px] text-[#9BA3AF]">
-            Bi-set / Super-série
+          <Label htmlFor="supersetGroupId" className="text-xs text-muted-foreground">
+            Super-série
           </Label>
           <Input
             id="supersetGroupId"
             name="supersetGroupId"
-            placeholder="Ex: A1, B1 (opcional)"
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="Ex: A1 (opcional)"
+            className="h-8 text-xs"
           />
         </div>
       </div>
 
-      {/* Prescription Parameters: Sets, Reps, Load, Rest, Tempo, RPE */}
       <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
-          <Label htmlFor="setsCount" className="text-[11px] text-[#9BA3AF]">
+          <Label htmlFor="setsCount" className="text-[11px] text-muted-foreground">
             Séries *
           </Label>
           <Input
@@ -247,27 +237,27 @@ export function AddExerciseToDayForm({
             max={15}
             defaultValue={4}
             required
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            className="h-8 font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="repsTarget" className="text-[11px] text-[#9BA3AF]">
-            Repetições *
+          <Label htmlFor="repsTarget" className="text-[11px] text-muted-foreground">
+            Reps *
           </Label>
           <Input
             id="repsTarget"
             name="repsTarget"
             defaultValue="8-12"
             required
-            placeholder="Ex: 8-12"
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="8-12"
+            className="h-8 font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="suggestedLoadKg" className="text-[11px] text-[#9BA3AF]">
-            Carga Sugerida (kg)
+          <Label htmlFor="suggestedLoadKg" className="text-[11px] text-muted-foreground">
+            Carga (kg)
           </Label>
           <Input
             id="suggestedLoadKg"
@@ -275,14 +265,14 @@ export function AddExerciseToDayForm({
             type="number"
             step="0.5"
             min={0}
-            placeholder="Ex: 40"
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="40"
+            className="h-8 font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="restSeconds" className="text-[11px] text-[#9BA3AF]">
-            Descanso (seg) *
+          <Label htmlFor="restSeconds" className="text-[11px] text-muted-foreground">
+            Descanso (s) *
           </Label>
           <Input
             id="restSeconds"
@@ -292,25 +282,25 @@ export function AddExerciseToDayForm({
             max={1800}
             defaultValue={90}
             required
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            className="h-8 font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="tempo" className="text-[11px] text-[#9BA3AF]">
+          <Label htmlFor="tempo" className="text-[11px] text-muted-foreground">
             Cadência
           </Label>
           <Input
             id="tempo"
             name="tempo"
-            placeholder="Ex: 3010"
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="3010"
+            className="h-8 font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="targetRpe" className="text-[11px] text-[#9BA3AF]">
-            RPE Alvo (1-10)
+          <Label htmlFor="targetRpe" className="text-[11px] text-muted-foreground">
+            RPE (1-10)
           </Label>
           <Input
             id="targetRpe"
@@ -319,27 +309,27 @@ export function AddExerciseToDayForm({
             step="0.5"
             min={1}
             max={10}
-            placeholder="Ex: 8"
-            className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="8"
+            className="h-8 font-mono text-xs"
           />
         </div>
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="coachNotes" className="text-[11px] text-[#9BA3AF]">
-          Observações Técnicas para o Aluno
+        <Label htmlFor="coachNotes" className="text-xs text-muted-foreground">
+          Observações técnicas
         </Label>
-        <textarea
+        <Textarea
           id="coachNotes"
           name="coachNotes"
           rows={2}
-          placeholder="Ex: Manter controle excêntrico de 3s; pausar 1s no pico de contração."
-          className="w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 py-1.5 text-xs text-[#F3F5F7]"
+          placeholder="Ex: Controle excêntrico de 3s; pausar 1s no pico."
+          className="min-h-[56px] text-xs"
         />
       </div>
 
       <Button type="submit" size="sm" disabled={pending} className="w-full">
-        {pending ? "Inserindo no Treino..." : "Inserir Exercício no Dia"}
+        {pending ? "Inserindo..." : "Inserir exercício no dia"}
       </Button>
     </form>
   );
@@ -374,11 +364,11 @@ export function PublishVersionForm({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
           name="notes"
-          placeholder={`Notas de publicação da v${versionNumber} (ex: Ajuste de volume semanal)`}
-          className="h-9 flex-1 bg-[#090B0E] border-[#242C3A] text-xs"
+          placeholder={`Notas da v${versionNumber} (ex: Ajuste de volume)`}
+          className="flex-1 text-xs"
         />
-        <Button type="submit" size="sm" disabled={pending} className="h-9 shrink-0">
-          {pending ? "Publicando..." : `Publicar v${versionNumber} para o Aluno`}
+        <Button type="submit" size="sm" disabled={pending} className="shrink-0">
+          {pending ? "Publicando..." : `Publicar v${versionNumber}`}
         </Button>
       </div>
     </form>
@@ -416,22 +406,22 @@ export function SaveTemplateForm({
           name="title"
           required
           defaultValue={`Template: ${defaultTitle}`}
-          placeholder="Título do Template *"
-          className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+          placeholder="Título do template *"
+          className="h-8 text-xs"
         />
         <Input
           name="category"
           placeholder="Categoria (ex: Hipertrofia ABC)"
-          className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
+          className="h-8 text-xs"
         />
         <Button
           type="submit"
           variant="outline"
           size="sm"
           disabled={pending}
-          className="h-8 border-[#242C3A] text-xs"
+          className="h-8"
         >
-          {pending ? "Salvando..." : "Salvar como Template"}
+          {pending ? "Salvando..." : "Salvar como template"}
         </Button>
       </div>
     </form>

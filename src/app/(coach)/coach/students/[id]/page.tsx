@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Calendar, PlusCircle } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { getStudentForTenant } from "@/modules/students/service";
 import { listProgramsForTenant } from "@/modules/workouts/service";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotFoundError } from "@/server/errors";
 import { requireCoachContext } from "@/server/auth/session";
 import { EditStudentForm } from "./edit-student-form";
@@ -28,78 +28,37 @@ export default async function StudentDetailPage({
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/coach/students"
-          className="inline-flex items-center gap-1.5 text-xs text-[#9BA3AF] hover:text-[#F3F5F7]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar para Alunos
-        </Link>
+    <div className="space-y-8">
+      <PageHeader
+        backHref="/coach/students"
+        backLabel="Voltar para Alunos"
+        title={student.user.name ?? "Aluno"}
+        description={`${student.user.email} · Cadastrado em ${new Date(
+          student.createdAt
+        ).toLocaleDateString("pt-BR")}`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/coach/progress?studentProfileId=${student.id}`}>
+              <Button variant="outline" size="sm">
+                Ver evolução
+              </Button>
+            </Link>
+            <Link href={`/coach/workouts?studentProfileId=${student.id}`}>
+              <Button size="sm">
+                <Plus className="h-4 w-4" />
+                Novo programa
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
-        <Link href={`/coach/workouts?studentProfileId=${student.id}`}>
-          <Button size="sm" className="gap-1.5 text-xs">
-            <PlusCircle className="h-3.5 w-3.5" />
-            Novo Programa para {student.user.name ?? "Aluno"}
-          </Button>
-        </Link>
-      </div>
-
-      {/* Student Programs Card */}
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#F3F5F7] flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-emerald-400" />
-            Programas de Treinamento ({programs.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {programs.length === 0 ? (
-            <p className="text-xs text-[#9BA3AF]">
-              Nenhum programa prescrito para este aluno ainda.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {programs.map((prog) => {
-                const latest = prog.versions[0];
-                return (
-                  <Link
-                    key={prog.id}
-                    href={`/coach/workouts/${prog.id}`}
-                    className="flex items-center justify-between rounded-lg border border-[#242C3A] bg-[#090B0E]/70 p-3 text-xs hover:border-emerald-500/40"
-                  >
-                    <div>
-                      <p className="font-semibold text-[#F3F5F7]">{prog.title}</p>
-                      <p className="text-[#9BA3AF]">
-                        {latest
-                          ? `v${latest.versionNumber} (${latest.status}) • ${latest.trainingDays.length} dias`
-                          : "Sem versões"}
-                      </p>
-                    </div>
-                    <Badge variant={prog.isActive ? "emerald" : "secondary"}>
-                      {prog.isActive ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold text-[#F3F5F7]">
-            {student.user.name ?? "Aluno"}
-          </CardTitle>
-          <CardDescription className="text-xs text-[#9BA3AF]">
-            {student.user.email} • Cadastrado em{" "}
-            {new Date(student.createdAt).toLocaleDateString("pt-BR")}
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        {/* Main Profile Form (2 cols) */}
+        <section className="lg:col-span-2 rounded-lg border border-border bg-card p-5 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold text-foreground">
+            Dados cadastrais e anamnese
+          </h2>
           <EditStudentForm
             student={{
               id: student.id,
@@ -114,8 +73,52 @@ export default async function StudentDetailPage({
               healthConditions: student.healthConditions,
             }}
           />
-        </CardContent>
-      </Card>
+        </section>
+
+        {/* Assigned Programs (1 col) */}
+        <aside className="rounded-lg border border-border bg-card overflow-hidden self-start">
+          <div className="border-b border-border px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-foreground">
+              Programas de treino ({programs.length})
+            </h2>
+          </div>
+
+          {programs.length === 0 ? (
+            <p className="p-5 text-xs text-muted-foreground">
+              Nenhum programa prescrito para este aluno ainda.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/70">
+              {programs.map((prog) => {
+                const latest = prog.versions[0];
+                return (
+                  <li key={prog.id}>
+                    <Link
+                      href={`/coach/workouts/${prog.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-3.5 text-xs transition-colors hover:bg-secondary/40"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{prog.title}</p>
+                        <p className="mt-0.5 text-muted-foreground">
+                          {latest
+                            ? `v${latest.versionNumber} (${latest.status}) · ${latest.trainingDays.length} dias`
+                            : "Sem versões"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={prog.isActive ? "emerald" : "secondary"}>
+                          {prog.isActive ? "Ativo" : "Inativo"}
+                        </Badge>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

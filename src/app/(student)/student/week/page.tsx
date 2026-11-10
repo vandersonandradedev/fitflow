@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Calendar, ChevronRight, Dumbbell } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getPublishedProgramForStudent } from "@/modules/workouts/service";
 import {
   DAY_OF_WEEK_LABELS,
@@ -18,46 +18,39 @@ export default async function StudentWeeklySchedulePage() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs text-[#9BA3AF]">Programação Semanal</p>
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F5F7]">
-          Sua Divisão de Treinos
+        <p className="text-xs text-muted-foreground">Programação semanal</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Sua divisão de treinos
         </h1>
       </div>
 
       {!activeProgram || !publishedVersion ? (
-        <Card className="border-[#242C3A] bg-[#12161D]">
-          <CardContent className="p-6 text-center space-y-2">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <h2 className="text-sm font-semibold text-[#F3F5F7]">
-              Nenhuma programação publicada
-            </h2>
-            <p className="text-xs text-[#9BA3AF]">
-              Seu personal trainer ainda não publicou uma rotina ativa para esta semana.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Nenhuma programação publicada"
+          description="Seu personal trainer ainda não publicou uma rotina ativa para esta semana."
+        />
       ) : (
         <>
-          <div className="rounded-xl border border-emerald-500/25 bg-[#12161D] p-4 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-[#F3F5F7]">
+          <section className="rounded-lg border border-border bg-card p-4 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-foreground">
                 {activeProgram.title}
               </span>
-              <Badge variant="emerald" className="text-[10px]">
+              <Badge variant="emerald" className="font-mono">
                 v{publishedVersion.versionNumber}
               </Badge>
             </div>
             {activeProgram.goal && (
-              <p className="text-xs text-emerald-400">Foco: {activeProgram.goal}</p>
+              <p className="text-xs text-primary">Foco: {activeProgram.goal}</p>
             )}
             {activeProgram.description && (
-              <p className="text-xs text-[#9BA3AF]">{activeProgram.description}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {activeProgram.description}
+              </p>
             )}
-          </div>
+          </section>
 
-          <div className="space-y-3">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
             {publishedVersion.trainingDays.map((day, index) => {
               const totalSets = day.workoutExercises.reduce(
                 (acc, wex) => acc + wex.sets.length,
@@ -65,40 +58,38 @@ export default async function StudentWeeklySchedulePage() {
               );
 
               return (
-                <Link
-                  key={day.id}
-                  href={`/student/today?dayId=${day.id}`}
-                  className="flex items-center justify-between rounded-xl border border-[#242C3A] bg-[#12161D] p-4 transition-colors hover:border-emerald-500/40"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                      <span className="text-[10px] font-bold uppercase">
+                <li key={day.id}>
+                  <Link
+                    href={`/student/today?dayId=${day.id}`}
+                    className="flex min-h-[64px] items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex h-10 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-background font-mono text-xs font-semibold text-primary">
                         {DAY_OF_WEEK_SHORT[day.dayOfWeek as DayOfWeekInput] ??
                           `D${index + 1}`}
-                      </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {day.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {DAY_OF_WEEK_LABELS[day.dayOfWeek as DayOfWeekInput] ??
+                            day.dayOfWeek}{" "}
+                          ·{" "}
+                          <span className="font-mono tabular-nums">
+                            {day.workoutExercises.length} exerc. · {totalSets} séries
+                          </span>
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-semibold text-[#F3F5F7]">
-                        {day.name}
-                      </p>
-                      <p className="text-xs text-[#9BA3AF]">
-                        {DAY_OF_WEEK_LABELS[day.dayOfWeek as DayOfWeekInput] ??
-                          day.dayOfWeek}{" "}
-                        • {day.workoutExercises.length} exercícios • {totalSets}{" "}
-                        séries
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 text-xs font-medium text-emerald-400">
-                    <Dumbbell className="h-4 w-4" />
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
-                </Link>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </>
       )}
     </div>

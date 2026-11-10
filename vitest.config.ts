@@ -13,6 +13,8 @@ export default defineConfig({
   resolve: { alias },
   test: {
     globals: true,
+    fileParallelism: false,
+    maxWorkers: 1,
     projects: [
       {
         extends: true,

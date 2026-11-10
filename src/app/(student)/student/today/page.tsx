@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Calendar, Dumbbell, Flame, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { prisma } from "@/lib/db";
 import { requireStudentContext } from "@/server/auth/session";
 import { startSessionAction } from "../session/actions";
@@ -65,6 +66,19 @@ export default async function StudentTodayPage({
                         name: true,
                         primaryMuscleGroup: true,
                         category: { select: { name: true } },
+                        media: {
+                          orderBy: { orderIndex: "asc" },
+                          take: 1,
+                          select: { url: true },
+                        },
+                        instructions: {
+                          orderBy: { stepNumber: "asc" },
+                          select: {
+                            stepNumber: true,
+                            instruction: true,
+                            safetyTip: true,
+                          },
+                        },
                       },
                     },
                     sets: {
@@ -120,108 +134,101 @@ export default async function StudentTodayPage({
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs text-[#9BA3AF]">Olá, {studentUser.name ?? "Aluno"}</p>
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F5F7]">
+        <p className="text-xs text-muted-foreground">Olá, {studentUser.name ?? "Aluno"}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Treino de Hoje
         </h1>
       </div>
 
-      {/* In-Progress Session Notification Banner */}
+      {/* In-Progress Session Banner */}
       {inProgressSession && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-xs shadow-md">
-          <div className="space-y-0.5">
-            <span className="flex items-center gap-1.5 font-bold text-emerald-300">
-              <Flame className="h-4 w-4 animate-pulse text-emerald-400" />
-              Sessão em Andamento
-            </span>
-            <p className="text-[#9BA3AF]">{inProgressSession.trainingDay.name}</p>
+        <div className="flex flex-col gap-3 rounded-lg border border-primary/40 bg-emerald-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold text-primary">Sessão em andamento</p>
+            <p className="mt-0.5 text-sm font-medium text-foreground">
+              {inProgressSession.trainingDay.name}
+            </p>
           </div>
-          <Link href={`/student/session/${inProgressSession.id}`}>
-            <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold text-xs h-8">
-              Continuar Treino →
+          <Link href={`/student/session/${inProgressSession.id}`} className="shrink-0">
+            <Button size="touch" className="w-full sm:w-auto h-11">
+              Continuar treino
             </Button>
           </Link>
         </div>
       )}
 
       {!activeProgram || !publishedVersion || !trainingDay ? (
-        <Card className="border-[#242C3A] bg-[#12161D]">
-          <CardContent className="p-6 text-center space-y-2">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <h2 className="text-sm font-semibold text-[#F3F5F7]">
-              Nenhum treino publicado para hoje
-            </h2>
-            <p className="text-xs text-[#9BA3AF]">
-              Assim que seu personal trainer publicar sua periodização, seus exercícios e séries aparecerão aqui.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="Nenhum treino publicado para hoje"
+          description="Assim que seu personal trainer publicar sua periodização, seus exercícios e séries aparecerão aqui."
+          action={
+            <Link href="/student/week">
+              <Button variant="outline" size="sm">
+                Ver programação semanal
+              </Button>
+            </Link>
+          }
+        />
       ) : (
         <>
-          {/* Active Training Day Hero Banner */}
-          <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-b from-[#141F23] to-[#12161D] p-5 shadow-lg space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="emerald" className="text-xs">
-                {activeProgram.title} • v{publishedVersion.versionNumber}
+          {/* Active Training Day Focus Header */}
+          <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Badge variant="emerald">
+                {activeProgram.title} · v{publishedVersion.versionNumber}
               </Badge>
-              <span className="text-xs text-[#9BA3AF]">
-                {trainingDay.workoutExercises.length} exercícios • {totalDaySets} séries
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {trainingDay.workoutExercises.length} exercícios · {totalDaySets} séries
               </span>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-[#F3F5F7]">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
                 {trainingDay.name}
               </h2>
               {trainingDay.description && (
-                <p className="mt-1 text-xs text-emerald-300">
+                <p className="mt-1 text-xs font-medium text-primary">
                   {trainingDay.description}
                 </p>
               )}
               {activeProgram.goal && (
-                <p className="mt-0.5 text-xs text-[#9BA3AF]">
-                  Foco do Ciclo: {activeProgram.goal}
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Foco do ciclo: {activeProgram.goal}
                 </p>
               )}
             </div>
 
-            {/* Main Action: Start or Continue Workout */}
             {inProgressSession && inProgressSession.trainingDayId === trainingDay.id ? (
-              <Link href={`/student/session/${inProgressSession.id}`}>
-                <Button className="w-full h-12 text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg shadow-emerald-500/20 gap-2">
-                  <Play className="h-5 w-5 fill-current" />
-                  Continuar Treino em Andamento
+              <Link href={`/student/session/${inProgressSession.id}`} className="block">
+                <Button size="touch" className="w-full">
+                  <Play className="h-4 w-4 fill-current" />
+                  Continuar treino em andamento
                 </Button>
               </Link>
             ) : (
               <form action={startSessionAction}>
                 <input type="hidden" name="trainingDayId" value={trainingDay.id} />
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-lg shadow-emerald-500/20 gap-2"
-                >
-                  <Play className="h-5 w-5 fill-current" />
-                  Iniciar Treino Agora
+                <Button type="submit" size="touch" className="w-full">
+                  <Play className="h-4 w-4 fill-current" />
+                  Iniciar treino agora
                 </Button>
               </form>
             )}
-          </div>
+          </section>
 
-          {/* Quick Days Switcher (if program has multiple days) */}
+          {/* Day Switcher (Sharp tabs, touch-friendly) */}
           {publishedVersion.trainingDays.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {publishedVersion.trainingDays.map((d) => {
                 const active = d.id === trainingDay.id;
                 return (
                   <Link
                     key={d.id}
                     href={`/student/today?dayId=${d.id}`}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors min-h-[38px] inline-flex items-center ${
                       active
-                        ? "bg-emerald-500 text-black font-semibold"
-                        : "border border-[#242C3A] bg-[#12161D] text-[#9BA3AF] hover:text-[#F3F5F7]"
+                        ? "border-primary/40 bg-secondary text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {d.name}
@@ -231,67 +238,76 @@ export default async function StudentTodayPage({
             </div>
           )}
 
-          {/* Exercises Preview List */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#647082] px-1">
-              Exercícios Prescritos
+          {/* Prescribed Exercises List */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-medium text-muted-foreground">
+              Exercícios prescritos ({trainingDay.workoutExercises.length})
             </h3>
 
-            {trainingDay.workoutExercises.map((item, idx) => (
-              <Card
-                key={item.id}
-                className="border-[#242C3A] bg-[#12161D] overflow-hidden"
-              >
-                <div className="flex items-center justify-between border-b border-[#242C3A]/60 p-3.5 bg-[#161B24]">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs">
-                      {idx + 1}
-                    </span>
-                    <div>
-                      <h4 className="font-semibold text-sm text-[#F3F5F7]">
-                        {item.exercise.name}
-                      </h4>
-                      <p className="text-[11px] text-[#9BA3AF]">
-                        {item.exercise.category.name} •{" "}
-                        {item.exercise.primaryMuscleGroup}
-                      </p>
+            <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
+              {trainingDay.workoutExercises.map((item, idx) => (
+                <div key={item.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className="mt-0.5 font-mono text-xs font-semibold text-primary tabular-nums">
+                        {String(idx + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-foreground">
+                          {item.exercise.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {item.exercise.category.name} · {item.exercise.primaryMuscleGroup}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <Dumbbell className="h-4 w-4 text-[#647082]" />
-                </div>
 
-                <CardContent className="p-3.5 space-y-2.5">
+                    <ExerciseGuideDialog
+                      exercise={{
+                        name: item.exercise.name,
+                        categoryName: item.exercise.category.name,
+                        primaryMuscleGroup: item.exercise.primaryMuscleGroup,
+                        mediaUrl: item.exercise.media[0]?.url ?? null,
+                        coachNotes: item.coachNotes,
+                        instructions: item.exercise.instructions,
+                      }}
+                      triggerLabel="Detalhes"
+                      triggerClassName="h-9 shrink-0 px-2.5 text-xs"
+                    />
+                  </div>
+
                   {item.coachNotes && (
-                    <p className="text-xs text-[#9BA3AF] italic bg-[#090B0E]/60 p-2 rounded border border-[#242C3A]/40">
+                    <p className="border-l-2 border-primary/50 pl-3 text-xs text-muted-foreground">
                       {item.coachNotes}
                     </p>
                   )}
 
-                  <div className="space-y-1.5">
+                  {/* Compact Sets Table (No nested boxes per set) */}
+                  <div className="divide-y divide-border/60 rounded-md border border-border bg-background/60">
                     {item.sets.map((set) => (
                       <div
                         key={set.id}
-                        className="flex items-center justify-between rounded-lg border border-[#242C3A]/60 bg-[#090B0E]/60 p-2.5 text-xs"
+                        className="flex items-center justify-between px-3 py-2 text-xs"
                       >
-                        <span className="font-mono font-bold text-[#F3F5F7]">
-                          Série #{set.setNumber}
+                        <span className="font-mono font-semibold text-primary tabular-nums">
+                          Série {set.setNumber}
                         </span>
-                        <span className="text-[#F3F5F7]">
+                        <span className="font-mono tabular-nums text-foreground">
                           {set.repsTarget} reps
                           {set.suggestedLoadKg
-                            ? ` • ${Number(set.suggestedLoadKg)} kg`
+                            ? ` · ${Number(set.suggestedLoadKg)} kg`
                             : ""}
                         </span>
-                        <span className="text-[#9BA3AF]">
-                          {set.restSeconds}s descanso
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          {set.restSeconds}s desc.
                         </span>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </div>

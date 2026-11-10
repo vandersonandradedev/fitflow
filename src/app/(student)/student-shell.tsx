@@ -1,0 +1,131 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Calendar, Dumbbell, History, LogOut, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface StudentShellProps {
+  tenantName: string;
+  initial: string;
+  logoutAction: () => Promise<void>;
+  children: React.ReactNode;
+}
+
+const STUDENT_TABS = [
+  { href: "/student/today", label: "Hoje", icon: Dumbbell },
+  { href: "/student/week", label: "Semana", icon: Calendar },
+  { href: "/student/history", label: "Histórico", icon: History },
+  { href: "/student/profile", label: "Perfil", icon: User },
+];
+
+export function StudentShell({
+  tenantName,
+  initial,
+  logoutAction,
+  children,
+}: StudentShellProps) {
+  const pathname = usePathname();
+
+  const isTabActive = (href: string) =>
+    pathname === href ||
+    pathname.startsWith(`${href}/`) ||
+    (href === "/student/today" && pathname.startsWith("/student/session"));
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      {/* Top Bar */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background">
+        <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
+          <Link href="/student/today" className="flex items-center gap-2 shrink-0">
+            <Dumbbell className="h-4 w-4 text-primary" />
+            <span className="text-sm sm:text-base font-semibold tracking-tight text-foreground">
+              FitFlow
+            </span>
+          </Link>
+
+          {/* Desktop/Tablet Inline Navigation */}
+          <nav
+            aria-label="Navegação do Aluno"
+            className="hidden md:flex items-center gap-1"
+          >
+            {STUDENT_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = isTabActive(tab.href);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                    active
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  )}
+                >
+                  <Icon className={cn("h-3.5 w-3.5", active && "text-primary")} />
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span className="truncate text-xs text-muted-foreground max-w-[130px] sm:max-w-[180px]">
+              {tenantName}
+            </span>
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-foreground">
+              {initial}
+            </div>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                aria-label="Sair"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="mx-auto w-full max-w-4xl flex-1 min-w-0 px-4 pt-4 pb-24 sm:px-6 sm:pt-6 md:pb-10">
+        {children}
+      </main>
+
+      {/* Bottom Ergonomic Navigation Bar for Gym Mobile Use */}
+      <nav
+        aria-label="Menu inferior do aluno"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        <div className="mx-auto grid h-16 max-w-lg grid-cols-4 items-center">
+          {STUDENT_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const active = isTabActive(tab.href);
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={cn(
+                  "relative flex h-full flex-col items-center justify-center transition-colors duration-150",
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 left-4 right-4 h-0.5 rounded-b bg-primary"
+                  />
+                )}
+                <Icon className="h-5 w-5" />
+                <span className="mt-1 text-[11px] font-medium">{tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}

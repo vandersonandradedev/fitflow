@@ -1,13 +1,23 @@
 import Link from "next/link";
-import { Users, Mail, Search, X } from "lucide-react";
+import { ChevronRight, Search, X } from "lucide-react";
 import { listPendingInvitesForTenant, listStudentsForTenant } from "@/modules/students/service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { requireCoachContext } from "@/server/auth/session";
 import { revokeInviteAction } from "./actions";
-import { InviteStudentForm } from "./invite-form";
+import { InviteStudentDialog } from "./invite-form";
 
 const GOAL_LABELS: Record<string, string> = {
   HYPERTROPHY: "Hipertrofia",
@@ -26,7 +36,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: "emerald" | "warni
 export default async function CoachStudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; invite?: string }>;
 }) {
   const ctx = await requireCoachContext();
   const params = await searchParams;
@@ -41,152 +51,190 @@ export default async function CoachStudentsPage({
   ]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#F3F5F7]">Gestão de Alunos</h1>
-        <p className="text-sm text-[#9BA3AF]">
-          Convide novos alunos, consulte perfis individuais e gerencie o status de acompanhamento.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Alunos"
+        description="Gerencie cadastros ativos, status de acompanhamento e convites pendentes."
+        actions={<InviteStudentDialog defaultOpen={params.invite === "1"} />}
+      />
 
-      {/* Invite Student Card */}
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#F3F5F7]">
-            Convidar Novo Aluno
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <InviteStudentForm />
-        </CardContent>
-      </Card>
-
-      {/* Pending Invites */}
+      {/* Pending Invites (Compact hairline strip only when present) */}
       {pendingInvites.length > 0 && (
-        <Card className="border-[#242C3A] bg-[#12161D]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-[#F3F5F7] flex items-center gap-2">
-              <Mail className="h-4 w-4 text-emerald-400" />
-              Convites Pendentes ({pendingInvites.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {pendingInvites.map((invite) => (
-                <div
-                  key={invite.id}
-                  className="flex items-center justify-between rounded-lg border border-[#242C3A]/60 bg-[#090B0E]/60 p-3 text-xs"
-                >
-                  <div>
-                    <p className="font-semibold text-[#F3F5F7]">{invite.name}</p>
-                    <p className="text-[#9BA3AF]">
-                      {invite.email} • Expira em {new Date(invite.expiresAt).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  <form action={revokeInviteAction}>
-                    <input type="hidden" name="inviteId" value={invite.id} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-1"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Revogar
-                    </Button>
-                  </form>
+        <section className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <h2 className="text-xs font-semibold text-foreground">
+              Convites pendentes ({pendingInvites.length})
+            </h2>
+          </div>
+          <ul className="divide-y divide-border/70">
+            {pendingInvites.map((invite) => (
+              <li
+                key={invite.id}
+                className="flex flex-col gap-2 px-4 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <span className="font-medium text-foreground">{invite.name}</span>
+                  <span className="mx-2 text-brand-textMuted">·</span>
+                  <span className="text-muted-foreground">{invite.email}</span>
+                  <span className="ml-2 font-mono text-[11px] tabular-nums text-brand-textMuted">
+                    Expira {new Date(invite.expiresAt).toLocaleDateString("pt-BR")}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <form action={revokeInviteAction} className="shrink-0 self-end sm:self-auto">
+                  <input type="hidden" name="inviteId" value={invite.id} />
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Revogar
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Students Directory */}
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base font-semibold text-[#F3F5F7] flex items-center gap-2">
-            <Users className="h-4 w-4 text-emerald-400" />
-            Alunos Cadastrados ({students.length})
-          </CardTitle>
+      {/* Search & Filter Toolbar */}
+      <form
+        method="GET"
+        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="relative flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-textMuted" />
+          <Input
+            name="search"
+            defaultValue={params.search ?? ""}
+            placeholder="Buscar nome ou e-mail..."
+            className="pl-8 text-xs"
+          />
+        </div>
 
-          <form method="GET" className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[#647082]" />
-              <Input
-                name="search"
-                defaultValue={params.search ?? ""}
-                placeholder="Buscar nome ou e-mail..."
-                className="h-9 w-56 pl-8 bg-[#090B0E] border-[#242C3A] text-xs"
-              />
-            </div>
-            <select
-              name="status"
-              defaultValue={statusFilter ?? ""}
-              className="h-9 rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 text-xs text-[#F3F5F7]"
-            >
-              <option value="">Todos os status</option>
-              <option value="ACTIVE">Ativos</option>
-              <option value="PAUSED">Pausados</option>
-              <option value="ARCHIVED">Arquivados</option>
-            </select>
-            <Button type="submit" variant="outline" size="sm" className="border-[#242C3A]">
-              Filtrar
-            </Button>
-          </form>
-        </CardHeader>
+        <div className="flex items-center gap-2">
+          <Select
+            name="status"
+            defaultValue={statusFilter ?? ""}
+            aria-label="Filtrar por status"
+            className="w-40 text-xs"
+          >
+            <option value="">Todos os status</option>
+            <option value="ACTIVE">Ativos</option>
+            <option value="PAUSED">Pausados</option>
+            <option value="ARCHIVED">Arquivados</option>
+          </Select>
+          <Button type="submit" variant="outline" size="sm" className="h-9">
+            Filtrar
+          </Button>
+        </div>
+      </form>
 
-        <CardContent>
-          {students.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#242C3A] p-8 text-center">
-              <p className="text-sm font-medium text-[#F3F5F7]">Nenhum aluno encontrado</p>
-              <p className="mt-1 text-xs text-[#9BA3AF]">
-                Envie um convite acima para que seu aluno crie a senha e acesse a plataforma.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {students.map((student) => {
-                const statusMeta = STATUS_LABELS[student.status] ?? {
-                  label: student.status,
-                  variant: "secondary" as const,
-                };
-                return (
-                  <Link
-                    key={student.id}
-                    href={`/coach/students/${student.id}`}
-                    className="flex items-center justify-between rounded-lg border border-[#242C3A]/60 bg-[#090B0E]/60 p-3.5 hover:border-emerald-500/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 font-semibold text-xs border border-emerald-500/20">
-                        {(student.user.name ?? student.user.email).substring(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-[#F3F5F7]">
+      {/* Students Table / Mobile List */}
+      {students.length === 0 ? (
+        <EmptyState
+          title="Nenhum aluno encontrado"
+          description="Ajuste os filtros ou convide um novo aluno para que ele ative o acesso ao portal."
+        />
+      ) : (
+        <section className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="border-b border-border px-4 py-2.5 text-xs font-medium text-muted-foreground">
+            {students.length} {students.length === 1 ? "aluno cadastrado" : "alunos cadastrados"}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Aluno</TableHead>
+                  <TableHead>Contato</TableHead>
+                  <TableHead>Objetivo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.map((student) => {
+                  const statusMeta = STATUS_LABELS[student.status] ?? {
+                    label: student.status,
+                    variant: "secondary" as const,
+                  };
+                  return (
+                    <TableRow key={student.id}>
+                      <TableCell>
+                        <Link
+                          href={`/coach/students/${student.id}`}
+                          className="font-medium text-foreground hover:text-primary"
+                        >
                           {student.user.name ?? "Sem nome"}
-                        </p>
-                        <p className="text-xs text-[#9BA3AF]">
-                          {student.user.email}
-                          {student.phone ? ` • ${student.phone}` : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[11px] hidden sm:inline-flex">
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <span>{student.user.email}</span>
+                        {student.phone && (
+                          <span className="block font-mono text-[11px] tabular-nums text-brand-textMuted">
+                            {student.phone}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
-                      </Badge>
-                      <Badge variant={statusMeta.variant} className="text-[11px]">
-                        {statusMeta.label}
-                      </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/coach/students/${student.id}`}
+                          aria-label={`Abrir perfil de ${student.user.name ?? student.user.email}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile List */}
+          <ul className="divide-y divide-border/70 md:hidden">
+            {students.map((student) => {
+              const statusMeta = STATUS_LABELS[student.status] ?? {
+                label: student.status,
+                variant: "secondary" as const,
+              };
+              return (
+                <li key={student.id}>
+                  <Link
+                    href={`/coach/students/${student.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {student.user.name ?? "Sem nome"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {student.user.email}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-brand-textMuted">
+                        {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
+                      </p>
                     </div>
+                    <Badge variant={statusMeta.variant} className="shrink-0">
+                      {statusMeta.label}
+                    </Badge>
                   </Link>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  compress: true,
   headers: async () => {
     return [
       {
@@ -30,9 +31,30 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/manifest.webmanifest",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
+        source: "/icons/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
     ];
   },
   images: {
+    // Zero Vercel Image Optimization compute fees:
+    // Imagens são tratadas diretamente como links/URLs no navegador do cliente
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -45,6 +67,14 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "media.fitflow.app",
+      },
+      {
+        protocol: "https",
+        hostname: "img.youtube.com",
+      },
+      {
+        protocol: "https",
+        hostname: "i.ytimg.com",
       },
     ],
   },

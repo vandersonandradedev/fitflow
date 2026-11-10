@@ -164,6 +164,7 @@ model StudentInvite {
 
   @@index([tenantId, email])
   @@index([tokenHash])
+  @@index([expiresAt, status])
   @@map("student_invites")
 }
 
@@ -196,6 +197,8 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([expires])
   @@map("sessions")
 }
 
@@ -205,6 +208,7 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@index([expires])
   @@map("verification_tokens")
 }
 
@@ -217,6 +221,7 @@ model PasswordResetToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([email])
+  @@index([expiresAt, usedAt])
   @@map("password_reset_tokens")
 }
 
@@ -226,6 +231,7 @@ model RateLimit {
   count       Int      @default(0)
   windowStart DateTime @map("window_start")
 
+  @@index([windowStart])
   @@map("rate_limits")
 }
 
@@ -504,6 +510,7 @@ model ExerciseLog {
   setLogs         SetLog[]
 
   @@index([workoutSessionId, orderIndex])
+  @@index([exerciseId])
   @@map("exercise_logs")
 }
 
@@ -598,6 +605,7 @@ model Notification {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+  @@index([tenantId, createdAt])
   @@map("notifications")
 }
 
@@ -617,5 +625,6 @@ model AuditLog {
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, action, createdAt])
+  @@index([createdAt])
   @@map("audit_logs")
 }

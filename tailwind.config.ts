@@ -51,20 +51,20 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // FitFlow Specific Design Tokens
+        // FitFlow Semantic Tokens
         brand: {
-          canvas: "#090B0E",
-          surface: "#12161D",
-          elevated: "#181E27",
-          subtle: "#1D2430",
-          border: "#242C3A",
-          borderStrong: "#333F53",
+          canvas: "#0A0C0F",
+          surface: "#111419",
+          elevated: "#171B22",
+          subtle: "#1E242E",
+          border: "#232934",
+          borderStrong: "#323B49",
           emerald: "#10B981",
           emeraldHover: "#059669",
           emeraldSubtle: "rgba(16, 185, 129, 0.12)",
           textPrimary: "#F3F5F7",
-          textSecondary: "#9BA3AF",
-          textMuted: "#647082",
+          textSecondary: "#9CA3AF",
+          textMuted: "#6B7280",
         },
       },
       borderRadius: {
@@ -74,7 +74,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
     },
   },

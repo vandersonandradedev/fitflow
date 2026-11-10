@@ -1,9 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionState } from "@/server/actions";
 import { recordAssessmentAction } from "./actions";
 
@@ -17,7 +27,7 @@ export function AssessmentForm({ studentProfileId }: { studentProfileId: string 
     <form action={action} className="space-y-4">
       {state.message && (
         <div
-          className={`rounded-lg border p-3 text-xs ${
+          className={`rounded-md border p-3 text-xs ${
             state.ok
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
               : "border-red-500/40 bg-red-500/10 text-red-300"
@@ -30,7 +40,7 @@ export function AssessmentForm({ studentProfileId }: { studentProfileId: string 
       {/* Main Composition */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="space-y-1">
-          <Label htmlFor="weightKg" className="text-xs text-[#9BA3AF]">
+          <Label htmlFor="weightKg" className="text-xs text-muted-foreground">
             Peso (kg) *
           </Label>
           <Input
@@ -39,13 +49,13 @@ export function AssessmentForm({ studentProfileId }: { studentProfileId: string 
             type="number"
             step="0.1"
             required
-            placeholder="Ex: 78.5"
-            className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="78.5"
+            className="font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="heightCm" className="text-xs text-[#9BA3AF]">
+          <Label htmlFor="heightCm" className="text-xs text-muted-foreground">
             Altura (cm)
           </Label>
           <Input
@@ -53,204 +63,166 @@ export function AssessmentForm({ studentProfileId }: { studentProfileId: string 
             name="heightCm"
             type="number"
             step="0.5"
-            placeholder="Ex: 178"
-            className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="178"
+            className="font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="bodyFatPercentage" className="text-xs text-[#9BA3AF]">
-            Gordura Corporal (%)
+          <Label htmlFor="bodyFatPercentage" className="text-xs text-muted-foreground">
+            Gordura (%)
           </Label>
           <Input
             id="bodyFatPercentage"
             name="bodyFatPercentage"
             type="number"
             step="0.1"
-            placeholder="Ex: 14.2"
-            className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="14.2"
+            className="font-mono text-xs"
           />
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="muscleMassPercentage" className="text-xs text-[#9BA3AF]">
-            Massa Muscular (%)
+          <Label htmlFor="muscleMassPercentage" className="text-xs text-muted-foreground">
+            Massa musc. (%)
           </Label>
           <Input
             id="muscleMassPercentage"
             name="muscleMassPercentage"
             type="number"
             step="0.1"
-            placeholder="Ex: 42.0"
-            className="h-9 bg-[#090B0E] border-[#242C3A] text-xs"
+            placeholder="42.0"
+            className="font-mono text-xs"
           />
         </div>
       </div>
 
       {/* Body Circumferences */}
-      <div className="space-y-1">
-        <p className="text-xs font-semibold text-[#F3F5F7]">Perimetria & Circunferências (cm)</p>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-5 pt-1">
+      <div className="space-y-2 border-t border-border pt-3">
+        <p className="text-xs font-medium text-foreground">
+          Perimetria e circunferências (cm)
+        </p>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
           <div>
-            <Label htmlFor="chestCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="chestCm" className="text-[11px] text-muted-foreground">
               Tórax
             </Label>
-            <Input
-              id="chestCm"
-              name="chestCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="chestCm" name="chestCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="waistCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="waistCm" className="text-[11px] text-muted-foreground">
               Cintura
             </Label>
-            <Input
-              id="waistCm"
-              name="waistCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="waistCm" name="waistCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="abdomenCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="abdomenCm" className="text-[11px] text-muted-foreground">
               Abdômen
             </Label>
-            <Input
-              id="abdomenCm"
-              name="abdomenCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="abdomenCm" name="abdomenCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="hipsCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="hipsCm" className="text-[11px] text-muted-foreground">
               Quadril
             </Label>
-            <Input
-              id="hipsCm"
-              name="hipsCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="hipsCm" name="hipsCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="rightArmCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="rightArmCm" className="text-[11px] text-muted-foreground">
               Braço D.
             </Label>
-            <Input
-              id="rightArmCm"
-              name="rightArmCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="rightArmCm" name="rightArmCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="leftArmCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="leftArmCm" className="text-[11px] text-muted-foreground">
               Braço E.
             </Label>
-            <Input
-              id="leftArmCm"
-              name="leftArmCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="leftArmCm" name="leftArmCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="rightThighCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="rightThighCm" className="text-[11px] text-muted-foreground">
               Coxa D.
             </Label>
-            <Input
-              id="rightThighCm"
-              name="rightThighCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="rightThighCm" name="rightThighCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="leftThighCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="leftThighCm" className="text-[11px] text-muted-foreground">
               Coxa E.
             </Label>
-            <Input
-              id="leftThighCm"
-              name="leftThighCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="leftThighCm" name="leftThighCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="rightCalfCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="rightCalfCm" className="text-[11px] text-muted-foreground">
               Panturrilha D.
             </Label>
-            <Input
-              id="rightCalfCm"
-              name="rightCalfCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="rightCalfCm" name="rightCalfCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
 
           <div>
-            <Label htmlFor="leftCalfCm" className="text-[11px] text-[#647082]">
+            <Label htmlFor="leftCalfCm" className="text-[11px] text-muted-foreground">
               Panturrilha E.
             </Label>
-            <Input
-              id="leftCalfCm"
-              name="leftCalfCm"
-              type="number"
-              step="0.5"
-              placeholder="cm"
-              className="h-8 bg-[#090B0E] border-[#242C3A] text-xs"
-            />
+            <Input id="leftCalfCm" name="leftCalfCm" type="number" step="0.5" placeholder="cm" className="h-8 font-mono text-xs" />
           </div>
         </div>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="notes" className="text-xs text-[#9BA3AF]">
-          Observações Clínicas e Posturais
+      <div className="space-y-1.5">
+        <Label htmlFor="notes" className="text-xs text-muted-foreground">
+          Observações clínicas e posturais
         </Label>
-        <textarea
+        <Textarea
           id="notes"
           name="notes"
           rows={2}
-          placeholder="Ex: Redução visível de retenção hídrica na região abdominal, boa recuperação muscular."
-          className="w-full rounded-md border border-[#242C3A] bg-[#090B0E] px-2.5 py-1.5 text-xs text-[#F3F5F7]"
+          placeholder="Ex: Boa evolução postural, redução de medida abdominal..."
+          className="text-xs"
         />
       </div>
 
-      <div className="flex justify-end">
-        <Button type="submit" size="sm" disabled={pending} className="h-9">
-          {pending ? "Registrando..." : "Registrar Avaliação Física"}
+      <div className="flex justify-end pt-1">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Registrando..." : "Registrar avaliação física"}
         </Button>
       </div>
     </form>
+  );
+}
+
+export function RecordAssessmentDialog({
+  studentProfileId,
+  studentName,
+}: {
+  studentProfileId: string;
+  studentName: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="h-4 w-4" />
+          Nova avaliação
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Registrar avaliação física</DialogTitle>
+          <DialogDescription>Aluno: {studentName}</DialogDescription>
+        </DialogHeader>
+        <div className="mt-4">
+          <AssessmentForm studentProfileId={studentProfileId} />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

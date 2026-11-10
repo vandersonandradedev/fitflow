@@ -4,35 +4,35 @@
 
 @layer base {
   :root {
-    --background: 216 28% 4.5%;       /* #090B0E */
-    --foreground: 210 20% 96%;        /* #F3F5F7 */
+    --background: 216 20% 4.5%;        /* #0A0C0F - Grafite profundo */
+    --foreground: 210 20% 96%;         /* #F3F5F7 - Branco suave */
 
-    --card: 218 24% 9.2%;             /* #12161D */
+    --card: 218 18% 8.2%;              /* #111419 - Carvão técnico */
     --card-foreground: 210 20% 96%;
 
-    --popover: 218 24% 12.4%;         /* #181E27 */
+    --popover: 218 18% 11.2%;          /* #171B22 - Superfície elevada */
     --popover-foreground: 210 20% 96%;
 
-    --primary: 160 84% 39%;           /* #10B981 (Emerald Athletic) */
-    --primary-foreground: 216 28% 4.5%;
+    --primary: 160 84% 39%;            /* #10B981 - Esmeralda funcional */
+    --primary-foreground: 216 20% 4.5%;
 
-    --secondary: 218 25% 15%;         /* #1D2430 */
+    --secondary: 218 18% 14.5%;        /* #1E242E - Superfície sutil */
     --secondary-foreground: 210 20% 96%;
 
-    --muted: 218 20% 15%;
-    --muted-foreground: 215 14% 56%;  /* #8B949E */
+    --muted: 218 16% 14%;
+    --muted-foreground: 215 14% 62%;   /* #9CA3AF - Cinza neutro acessível */
 
     --accent: 160 84% 39%;
-    --accent-foreground: 216 28% 4.5%;
+    --accent-foreground: 216 20% 4.5%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;          /* #DC2626 / #EF4444 semântico */
     --destructive-foreground: 210 20% 96%;
 
-    --border: 218 23% 18.6%;          /* #242C3A */
-    --input: 218 24% 26.3%;           /* #333F53 */
+    --border: 218 19% 17%;             /* #232934 - Divisor discreto */
+    --input: 218 18% 24%;              /* #323B49 - Borda de campo */
     --ring: 160 84% 39%;
 
-    --radius: 0.625rem;               /* 10px */
+    --radius: 0.5rem;                  /* 8px - Geometria técnica */
   }
 
   * {
@@ -42,8 +42,6 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-color: #090B0E;
-    color: #F3F5F7;
   }
 }
 
@@ -54,14 +52,35 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #090B0E;
+  background: hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #242C3A;
-  border-radius: 9999px;
+  background: hsl(var(--border));
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333F53;
+  background: hsl(var(--input));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }

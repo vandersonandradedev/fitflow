@@ -1,7 +1,6 @@
-import { ShieldAlert } from "lucide-react";
 import { revokeSessionsAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireCoachContext } from "@/server/auth/session";
 import { ChangePasswordForm } from "./password-form";
 
@@ -10,43 +9,38 @@ export default async function CoachSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#F3F5F7]">Segurança e Sessões</h1>
-        <p className="text-sm text-[#9BA3AF]">
-          Altere sua senha ou encerre sessões ativas em todos os dispositivos.
-        </p>
-      </div>
+      <PageHeader
+        title="Segurança e sessões"
+        description="Altere sua senha ou encerre sessões ativas em todos os dispositivos."
+      />
 
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-[#F3F5F7]">Alterar Senha</CardTitle>
-          <CardDescription className="text-xs text-[#9BA3AF]">
-            Ao alterar a senha, todas as sessões anteriores serão revogadas automaticamente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="max-w-2xl divide-y divide-border rounded-lg border border-border bg-card">
+        <section className="p-5 sm:p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Alterar senha</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Ao alterar a senha, todas as sessões anteriores serão revogadas automaticamente.
+            </p>
+          </div>
           <ChangePasswordForm />
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card className="border-[#242C3A] bg-[#12161D]">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-[#F3F5F7] flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-amber-400" />
-            Revogar Todas as Sessões
-          </CardTitle>
-          <CardDescription className="text-xs text-[#9BA3AF]">
-            Incrementa a versão de sessão da sua conta, desconectando imediatamente qualquer navegador ou dispositivo autenticado.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <section className="p-5 sm:p-6 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">
+              Revogar todas as sessões
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Incrementa a versão de sessão da sua conta, desconectando imediatamente qualquer navegador ou dispositivo autenticado.
+            </p>
+          </div>
           <form action={revokeSessionsAction}>
-            <Button type="submit" variant="destructive">
-              Encerrar Sessões em Todos os Dispositivos
+            <Button type="submit" variant="destructive" size="sm">
+              Encerrar sessões em todos os dispositivos
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </div>
   );
 }
