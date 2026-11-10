@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   Clock,
-  Dumbbell,
   Flame,
   MessageSquare,
   Minus,
@@ -624,6 +623,9 @@ export function WorkoutRunner({
                 <Trophy className="h-5 w-5 text-emerald-400" />
                 Finalizar Treino: {dayName}
               </CardTitle>
+              {dayDescription && (
+                <p className="text-xs text-emerald-400/80">{dayDescription}</p>
+              )}
               <p className="text-xs text-[#9BA3AF]">
                 Confira o resumo da sua sessão e envie seu feedback para o treinador.
               </p>

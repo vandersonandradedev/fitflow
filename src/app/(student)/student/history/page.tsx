@@ -1,6 +1,6 @@
-import { Calendar, CheckCircle2, Clock, Dumbbell, Flame, History, MessageSquare } from "lucide-react";
+import { Clock, Flame, History, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { listStudentSessionHistory } from "@/modules/sessions/service";
 import { requireStudentContext } from "@/server/auth/session";
 

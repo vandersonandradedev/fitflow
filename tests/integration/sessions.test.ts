@@ -17,7 +17,7 @@ import {
   createProgramForStudent,
   publishProgramVersion,
 } from "@/modules/workouts/service";
-import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
+import { ConflictError, ForbiddenError, NotFoundError } from "@/server/errors";
 import { createCoach, createStudent } from "./helpers";
 
 const RANDOM_UUID = "44444444-4444-4444-8444-444444444444";

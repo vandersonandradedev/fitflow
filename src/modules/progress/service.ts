@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertCoach, isCoach, type TenantContext } from "@/server/auth/context";
 import { writeAudit } from "@/server/audit";
-import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
+import { NotFoundError, ValidationError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import { physicalAssessmentInputSchema } from "./types";
 

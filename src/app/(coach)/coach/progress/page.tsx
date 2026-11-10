@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Activity,
   Calendar,
@@ -10,7 +9,6 @@ import {
   Trash2,
   TrendingUp,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listExercisesForTenant } from "@/modules/exercises/service";
