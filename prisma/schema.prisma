@@ -69,6 +69,7 @@ model Tenant {
   physicalAssessments PhysicalAssessment[]
   notifications       Notification[]
   auditLogs           AuditLog[]
+  mediaGallery        TenantMedia[]
 
   @@map("tenants")
 }
@@ -329,6 +330,28 @@ model ExerciseInstruction {
 
   @@unique([exerciseId, stepNumber])
   @@map("exercise_instructions")
+}
+
+model TenantMedia {
+  id              String          @id @default(uuid())
+  tenantId        String          @map("tenant_id")
+  title           String          @db.VarChar(200)
+  description     String?         @db.Text
+  mediaType       MediaType       @default(IMAGE) @map("media_type")
+  url             String          @db.VarChar(500)
+  thumbnailUrl    String?         @map("thumbnail_url") @db.VarChar(500)
+  storageProvider StorageProvider @default(EXTERNAL) @map("storage_provider")
+  category        String?         @db.VarChar(100)
+  tags            String[]        @default([])
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, mediaType])
+  @@index([tenantId, title])
+  @@index([tenantId, category])
+  @@map("tenant_media")
 }
 
 // ==============================================================================

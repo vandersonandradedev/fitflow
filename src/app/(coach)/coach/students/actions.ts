@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { inviteStudent, revokeInviteForTenant } from "@/modules/students/invites";
-import { updateStudentForTenant } from "@/modules/students/service";
+import { createStudentDirectlyForTenant, deleteStudentForTenant, updateStudentForTenant } from "@/modules/students/service";
 import { formObject, toActionState, type ActionState } from "@/server/actions";
 import { getTenantContext } from "@/server/auth/session";
 
@@ -44,5 +44,29 @@ export async function updateStudentAction(
     revalidatePath(`/coach/students/${studentId}`);
     revalidatePath("/coach/dashboard");
     return { ok: true, message: "Ficha do aluno atualizada com sucesso." };
+  });
+}
+
+export async function createDirectStudentAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  return toActionState(async () => {
+    const ctx = await getTenantContext();
+    const raw = formObject(formData);
+    await createStudentDirectlyForTenant(ctx, raw);
+    revalidatePath("/coach/students");
+    revalidatePath("/coach/dashboard");
+    return { ok: true, message: "Aluno matriculado com sucesso no estúdio." };
+  });
+}
+
+export async function deleteStudentAction(studentId: string): Promise<ActionState> {
+  return toActionState(async () => {
+    const ctx = await getTenantContext();
+    await deleteStudentForTenant(ctx, studentId);
+    revalidatePath("/coach/students");
+    revalidatePath("/coach/dashboard");
+    return { ok: true, message: "Aluno removido com sucesso." };
   });
 }

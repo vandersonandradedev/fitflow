@@ -5,6 +5,7 @@ import path from "path";
 
 const env = loadEnv("test", process.cwd(), "");
 const testDbUrl = env.TEST_DATABASE_URL;
+const testRedisUrl = env.TEST_REDIS_URL;
 
 const alias = { "@": path.resolve(__dirname, "./src") };
 
@@ -38,6 +39,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl ?? "",
             DIRECT_URL: testDbUrl ?? "",
+            REDIS_URL: testRedisUrl ?? "",
             AUTH_SECRET: "test-secret-test-secret-test-secret-123",
             NODE_ENV: "test",
           },

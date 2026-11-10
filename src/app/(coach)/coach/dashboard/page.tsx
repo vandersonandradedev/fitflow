@@ -53,9 +53,11 @@ export default async function CoachDashboardPage() {
             {data.totalStudents}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            <span className="text-primary font-medium">{data.activeStudents} ativos</span>
+            <span className="text-primary font-medium">
+              {data.activeStudents} {data.activeStudents === 1 ? "ativo" : "ativos"}
+            </span>
             {" · "}
-            {data.pausedStudents} pausados
+            {data.pausedStudents} {data.pausedStudents === 1 ? "pausado" : "pausados"}
           </p>
         </div>
 

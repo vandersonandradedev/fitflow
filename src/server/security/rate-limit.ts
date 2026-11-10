@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getRedisClient } from "@/lib/redis";
 import { RateLimitError } from "@/server/errors";
 
 interface RateLimitRule {
@@ -16,13 +17,24 @@ export const RATE_LIMITS = {
   inviteCreate: { scope: "invite:user", limit: 30, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
-/**
- * Contador de janela fixa persistido no Postgres (compartilhado entre instâncias serverless).
- * Um único INSERT ... ON CONFLICT torna o incremento atômico e totalmente parametrizado.
- * Lança RateLimitError quando o limite é excedido.
- */
-export async function enforceRateLimit(rule: RateLimitRule, identifier: string): Promise<void> {
-  const key = `${rule.scope}:${identifier.toLowerCase()}`.slice(0, 255);
+const REDIS_FIXED_WINDOW_LUA = `
+local current = redis.call("INCR", KEYS[1])
+if current == 1 then
+  redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+end
+local ttl = redis.call("TTL", KEYS[1])
+if ttl < 0 then
+  redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+  ttl = tonumber(ARGV[1])
+end
+return { current, ttl }
+`;
+
+function buildKey(rule: RateLimitRule, identifier: string): string {
+  return `${rule.scope}:${identifier.toLowerCase()}`.slice(0, 255);
+}
+
+async function enforceRateLimitPostgres(rule: RateLimitRule, key: string): Promise<void> {
   const rows = await prisma.$queryRaw<Array<{ count: number; window_start: Date }>>`
     INSERT INTO rate_limits ("key", "count", "window_start")
     VALUES (${key}, 1, NOW())
@@ -47,8 +59,51 @@ export async function enforceRateLimit(rule: RateLimitRule, identifier: string):
   }
 }
 
+/**
+ * Contador de janela fixa distribuído.
+ * Usa Redis quando `REDIS_URL` está configurado e acessível (ex.: desenvolvimento/testes com Docker),
+ * com fallback automático para PostgreSQL quando não há Redis disponível.
+ */
+export async function enforceRateLimit(rule: RateLimitRule, identifier: string): Promise<void> {
+  const key = buildKey(rule, identifier);
+  const redis = getRedisClient();
+
+  if (redis) {
+    try {
+      const result = (await redis.eval(
+        REDIS_FIXED_WINDOW_LUA,
+        1,
+        `rl:${key}`,
+        rule.windowSeconds
+      )) as [number, number];
+
+      const count = Number(result[0]);
+      const ttl = Number(result[1]);
+      if (count > rule.limit) {
+        throw new RateLimitError(undefined, Math.max(1, ttl > 0 ? ttl : rule.windowSeconds));
+      }
+      return;
+    } catch (error) {
+      if (error instanceof RateLimitError) throw error;
+      // Fallback seguro para Postgres se o container Redis estiver indisponível
+    }
+  }
+
+  await enforceRateLimitPostgres(rule, key);
+}
+
 /** Zera o contador após sucesso (ex.: login correto não deve penalizar o usuário legítimo). */
 export async function resetRateLimit(rule: RateLimitRule, identifier: string): Promise<void> {
-  const key = `${rule.scope}:${identifier.toLowerCase()}`.slice(0, 255);
+  const key = buildKey(rule, identifier);
+  const redis = getRedisClient();
+
+  if (redis) {
+    try {
+      await redis.del(`rl:${key}`);
+    } catch {
+      // Ignora erro de conexão para seguir com limpeza no fallback
+    }
+  }
+
   await prisma.rateLimit.deleteMany({ where: { key } });
 }

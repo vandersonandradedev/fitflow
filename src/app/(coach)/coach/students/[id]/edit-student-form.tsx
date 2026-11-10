@@ -1,13 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
-import { updateStudentAction } from "../actions";
+import { deleteStudentAction, updateStudentAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import type { ActionState } from "@/server/actions";
 
 const initialState: ActionState = {};
@@ -24,6 +26,7 @@ export interface StudentEditData {
 }
 
 export function EditStudentForm({ student }: { student: StudentEditData }) {
+  const router = useRouter();
   const boundAction = updateStudentAction.bind(null, student.id);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
 
@@ -136,7 +139,18 @@ export function EditStudentForm({ student }: { student: StudentEditData }) {
         />
       </div>
 
-      <div className="flex justify-end pt-1">
+      <div className="flex items-center justify-between pt-4 border-t border-border mt-6">
+        <DeleteConfirmDialog
+          title="Excluir Aluno"
+          description="Tem certeza que deseja excluir este aluno? O acesso dele ao portal do estúdio será imediatamente revogado e seus dados serão arquivados."
+          triggerLabel="Excluir Aluno"
+          triggerVariant="destructive"
+          onConfirm={async () => {
+            await deleteStudentAction(student.id);
+            router.push("/coach/students");
+          }}
+        />
+
         <Button type="submit" disabled={pending}>
           <Save className="h-4 w-4" />
           {pending ? "Salvando..." : "Salvar alterações"}

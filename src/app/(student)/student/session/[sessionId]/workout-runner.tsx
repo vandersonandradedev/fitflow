@@ -112,26 +112,11 @@ export function WorkoutRunner({
   const router = useRouter();
   const storageKey = `fitflow_session_${sessionId}`;
 
-  const [exercises, setExercises] = useState<RunnerExercise[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(storageKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length === initialExercises.length) {
-            return parsed;
-          }
-        }
-      } catch {}
-    }
-    return initialExercises;
-  });
+  const [exercises, setExercises] = useState<RunnerExercise[]>(initialExercises);
+  const [hydratedStorage, setHydratedStorage] = useState(false);
 
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
-    const start = new Date(startedAtIso).getTime();
-    return Math.max(0, Math.floor((Date.now() - start) / 1000));
-  });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const [restTimer, setRestTimer] = useState<{
     active: boolean;
@@ -151,16 +136,33 @@ export function WorkoutRunner({
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(exercises));
+      const cached = localStorage.getItem(storageKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length === initialExercises.length) {
+          setExercises(parsed);
+        }
+      }
     } catch {}
-  }, [exercises, storageKey]);
+    setHydratedStorage(true);
+  }, [storageKey, initialExercises.length]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
+    if (!hydratedStorage) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(exercises));
+    } catch {}
+  }, [exercises, storageKey, hydratedStorage]);
+
+  useEffect(() => {
+    const start = new Date(startedAtIso).getTime();
+    const syncElapsed = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+    };
+    syncElapsed();
+    const timer = setInterval(syncElapsed, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [startedAtIso]);
 
   useEffect(() => {
     if (!restTimer.active || restTimer.remaining <= 0) return;

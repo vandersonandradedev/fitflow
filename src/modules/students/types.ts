@@ -40,6 +40,23 @@ export const listStudentsSchema = z.object({
   take: z.number().int().min(1).max(100).default(50),
 });
 
+export const createDirectStudentSchema = z.object({
+  name: z.string().trim().min(2, "O nome deve ter no mínimo 2 caracteres").max(120),
+  email: emailSchema,
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .regex(/^[0-9()+\-\s]*$/, "Telefone inválido")
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  fitnessGoal: fitnessGoal.default("HYPERTROPHY"),
+  experienceLevel: experienceLevel.default("BEGINNER"),
+  trainerNotes: z.string().max(2000).optional().transform((v) => (v ? v : undefined)),
+  healthConditions: z.string().max(1000).optional().transform((v) => (v ? v : undefined)),
+});
+
 export type CreateStudentInviteInput = z.infer<typeof createStudentInviteSchema>;
+export type CreateDirectStudentInput = z.infer<typeof createDirectStudentSchema>;
 export type UpdateStudentInput = z.infer<typeof updateStudentSchema>;
 export type ListStudentsInput = z.input<typeof listStudentsSchema>;

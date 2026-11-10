@@ -178,7 +178,9 @@ export default async function StudentTodayPage({
                 {activeProgram.title} · v{publishedVersion.versionNumber}
               </Badge>
               <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                {trainingDay.workoutExercises.length} exercícios · {totalDaySets} séries
+                {trainingDay.workoutExercises.length}{" "}
+                {trainingDay.workoutExercises.length === 1 ? "exercício" : "exercícios"} ·{" "}
+                {totalDaySets} {totalDaySets === 1 ? "série" : "séries"}
               </span>
             </div>
 

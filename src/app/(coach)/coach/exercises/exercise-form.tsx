@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DIFFICULTY_LABELS, EQUIPMENT_LABELS } from "@/modules/exercises/types";
 import type { ActionState } from "@/server/actions";
 import { createExerciseAction, updateExerciseAction } from "./actions";
+import { GalleryPickerDialog } from "@/components/ui/gallery-picker-dialog";
 
 export interface CategoryOption {
   id: string;
@@ -56,6 +57,8 @@ export function ExerciseForm({
     : createExerciseAction;
 
   const [state, action, pending] = useActionState(boundAction, initialState);
+  const [mediaUrl, setMediaUrl] = useState(initialValues?.mediaUrl ?? "");
+  const [mediaType, setMediaType] = useState(initialValues?.mediaType ?? "IMAGE");
 
   return (
     <form action={action} className="space-y-4">
@@ -174,14 +177,23 @@ export function ExerciseForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="mediaUrl" className="text-xs text-muted-foreground">
-            URL de demonstração (YouTube, Vimeo, HTTPS ou /images/exercises/...)
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="mediaUrl" className="text-xs text-muted-foreground">
+              URL de demonstração (YouTube, Vimeo, HTTPS ou /images/exercises/...)
+            </Label>
+            <GalleryPickerDialog
+              onSelect={(m) => {
+                setMediaUrl(m.url);
+                setMediaType(m.mediaType);
+              }}
+            />
+          </div>
           <Input
             id="mediaUrl"
             name="mediaUrl"
-            defaultValue={initialValues?.mediaUrl ?? ""}
-            placeholder="https://... ou /images/exercises/push.svg"
+            value={mediaUrl}
+            onChange={(e) => setMediaUrl(e.target.value)}
+            placeholder="https://... ou escolha da sua galeria acima"
           />
           {state.fieldErrors?.["media.0.url"] && (
             <p className="text-xs text-red-400">{state.fieldErrors["media.0.url"][0]}</p>
@@ -195,7 +207,8 @@ export function ExerciseForm({
           <Select
             id="mediaType"
             name="mediaType"
-            defaultValue={initialValues?.mediaType ?? "IMAGE"}
+            value={mediaType}
+            onChange={(e) => setMediaType(e.target.value)}
           >
             <option value="IMAGE">Imagem / Diagrama</option>
             <option value="VIDEO">Vídeo Demonstrativo</option>

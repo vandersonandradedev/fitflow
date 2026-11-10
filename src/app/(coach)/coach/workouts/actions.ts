@@ -9,6 +9,7 @@ import {
   createNewDraftVersion,
   createProgramForStudent,
   deleteTrainingDayFromDraft,
+  deleteTrainingProgramForTenant,
   deleteWorkoutTemplateForTenant,
   getProgramForTenant,
   publishProgramVersion,
@@ -17,6 +18,7 @@ import {
   reorderWorkoutExercisesInDay,
   saveProgramVersionAsTemplate,
   updateTrainingDayInDraft,
+  updateTrainingProgramInfo,
   updateWorkoutExerciseInDraft,
 } from "@/modules/workouts/service";
 import { toActionState, type ActionState } from "@/server/actions";
@@ -318,4 +320,42 @@ export async function deleteTemplateAction(formData: FormData): Promise<void> {
 
   await deleteWorkoutTemplateForTenant(ctx, templateId);
   revalidatePath("/coach/workouts");
+}
+
+export async function deleteProgramAction(programId: string): Promise<ActionState> {
+  return toActionState(async () => {
+    const ctx = await getTenantContext();
+    const result = await deleteTrainingProgramForTenant(ctx, programId);
+    revalidatePath("/coach/workouts");
+    revalidatePath("/coach/dashboard");
+    return {
+      ok: true,
+      message: result.message ?? "Programa excluído com sucesso.",
+    };
+  });
+}
+
+export async function updateProgramInfoAction(
+  programId: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  return toActionState(async () => {
+    const ctx = await getTenantContext();
+    const title = String(formData.get("title") ?? "").trim();
+    const goal = String(formData.get("goal") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const isActiveVal = formData.get("isActive");
+
+    await updateTrainingProgramInfo(ctx, programId, {
+      title: title || undefined,
+      goal: goal || undefined,
+      description: description || undefined,
+      isActive: isActiveVal !== null ? isActiveVal === "true" || isActiveVal === "on" : undefined,
+    });
+
+    revalidatePath(`/coach/workouts/${programId}`);
+    revalidatePath("/coach/workouts");
+    return { ok: true, message: "Dados do programa atualizados com sucesso." };
+  });
 }

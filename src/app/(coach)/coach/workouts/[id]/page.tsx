@@ -52,6 +52,7 @@ import {
   PublishVersionForm,
   SaveTemplateForm,
 } from "./builder-forms";
+import { DeleteProgramButton } from "../delete-program-button";
 
 const WEEK_ORDER: DayOfWeekInput[] = [
   "MONDAY",
@@ -175,6 +176,12 @@ export default async function CoachWorkoutBuilderPage({
                 </Button>
               </form>
             )}
+
+            <DeleteProgramButton
+              programId={program.id}
+              programTitle={program.title}
+              variant="outline"
+            />
           </div>
         }
       />

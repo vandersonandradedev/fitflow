@@ -2,9 +2,9 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/server/audit";
 import { assertCoach, type TenantContext } from "@/server/auth/context";
-import { NotFoundError } from "@/server/errors";
+import { NotFoundError, ValidationError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
-import { listStudentsSchema, updateStudentSchema } from "./types";
+import { createDirectStudentSchema, listStudentsSchema, updateStudentSchema } from "./types";
 
 /**
  * Seleção explícita: nunca devolvemos o User inteiro (evita vazar passwordHash, sessionVersion etc.).
@@ -105,5 +105,130 @@ export async function listPendingInvitesForTenant(ctx: TenantContext) {
     select: { id: true, name: true, email: true, expiresAt: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 100,
+  });
+}
+
+/**
+ * Remove (soft-delete / arquiva) o aluno do tenant com segurança anti-IDOR.
+ * Invalida imediatamente as sessões de login do aluno para este estúdio.
+ */
+export async function deleteStudentForTenant(ctx: TenantContext, studentId: string) {
+  assertCoach(ctx);
+
+  const student = await prisma.studentProfile.findFirst({
+    where: { id: studentId, tenantId: ctx.tenantId, deletedAt: null },
+    select: { id: true, userId: true },
+  });
+
+  if (!student) {
+    throw new NotFoundError("Aluno não encontrado.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.studentProfile.update({
+      where: { id: student.id },
+      data: {
+        deletedAt: new Date(),
+        status: "ARCHIVED",
+      },
+    });
+
+    await tx.user.update({
+      where: { id: student.userId },
+      data: { sessionVersion: { increment: 1 } },
+    });
+
+    await writeAudit(tx, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      action: "STUDENT_DELETED",
+      resource: "student_profile",
+      resourceId: student.id,
+    });
+  });
+
+  return { ok: true };
+}
+
+/**
+ * Cria ou reativa um aluno diretamente pelo treinador no estúdio.
+ */
+export async function createStudentDirectlyForTenant(ctx: TenantContext, rawInput: unknown) {
+  assertCoach(ctx);
+  const data = parseInput(createDirectStudentSchema, rawInput);
+
+  return prisma.$transaction(async (tx) => {
+    let user = await tx.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (!user) {
+      user = await tx.user.create({
+        data: {
+          email: data.email,
+          name: data.name,
+          emailVerified: new Date(),
+        },
+      });
+    }
+
+    const existingProfile = await tx.studentProfile.findFirst({
+      where: { tenantId: ctx.tenantId, userId: user.id },
+    });
+
+    if (existingProfile) {
+      if (existingProfile.deletedAt) {
+        const reactivated = await tx.studentProfile.update({
+          where: { id: existingProfile.id },
+          data: {
+            deletedAt: null,
+            status: "ACTIVE",
+            fitnessGoal: data.fitnessGoal,
+            experienceLevel: data.experienceLevel,
+            phone: data.phone,
+            trainerNotes: data.trainerNotes,
+            healthConditions: data.healthConditions,
+          },
+          select: studentDetailSelect,
+        });
+        return reactivated;
+      }
+      throw new ValidationError("Este aluno já está cadastrado no seu estúdio.");
+    }
+
+    await tx.tenantMember.upsert({
+      where: { userId: user.id },
+      create: {
+        tenantId: ctx.tenantId,
+        userId: user.id,
+        role: "STUDENT",
+      },
+      update: {},
+    });
+
+    const newProfile = await tx.studentProfile.create({
+      data: {
+        tenantId: ctx.tenantId,
+        userId: user.id,
+        status: "ACTIVE",
+        fitnessGoal: data.fitnessGoal,
+        experienceLevel: data.experienceLevel,
+        phone: data.phone,
+        trainerNotes: data.trainerNotes,
+        healthConditions: data.healthConditions,
+      },
+      select: studentDetailSelect,
+    });
+
+    await writeAudit(tx, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      action: "STUDENT_CREATED_DIRECTLY",
+      resource: "student_profile",
+      resourceId: newProfile.id,
+      metadata: { email: data.email, name: data.name },
+    });
+
+    return newProfile;
   });
 }

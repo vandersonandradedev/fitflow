@@ -7,6 +7,7 @@ import {
   BookOpen,
   Calendar,
   Dumbbell,
+  Images,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/coach/students", label: "Alunos", icon: Users },
   { href: "/coach/exercises", label: "Exercícios", icon: BookOpen },
   { href: "/coach/workouts", label: "Treinos", icon: Calendar },
+  { href: "/coach/gallery", label: "Galeria", icon: Images },
   { href: "/coach/progress", label: "Evolução", icon: LineChart },
 ];
 

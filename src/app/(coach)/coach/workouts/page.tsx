@@ -20,6 +20,7 @@ import {
 import { requireCoachContext } from "@/server/auth/session";
 import { deleteTemplateAction } from "./actions";
 import { CreateProgramDialog } from "./create-program-form";
+import { DeleteProgramButton } from "./delete-program-button";
 
 export default async function CoachWorkoutsPage({
   searchParams,
@@ -141,13 +142,21 @@ export default async function CoachWorkoutsPage({
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Link
-                            href={`/coach/workouts/${program.id}`}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                          >
-                            Abrir
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </Link>
+                          <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/coach/workouts/${program.id}`}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              Abrir
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                            <DeleteProgramButton
+                              programId={program.id}
+                              programTitle={program.title}
+                              variant="ghost"
+                              iconOnly
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

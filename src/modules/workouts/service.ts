@@ -1108,3 +1108,158 @@ export async function deleteWorkoutTemplateForTenant(
     });
   });
 }
+
+/**
+ * Atualiza os dados de identificação e cabeçalho de um programa de treino.
+ */
+export async function updateTrainingProgramInfo(
+  ctx: TenantContext,
+  programId: string,
+  input: {
+    title?: string;
+    goal?: string;
+    description?: string;
+    isActive?: boolean;
+  }
+) {
+  assertCoach(ctx);
+
+  const existing = await prisma.trainingProgram.findFirst({
+    where: { id: programId, tenantId: ctx.tenantId },
+  });
+
+  if (!existing) {
+    throw new NotFoundError("Programa de treino não encontrado.");
+  }
+
+  const updated = await prisma.trainingProgram.update({
+    where: { id: programId },
+    data: {
+      title: input.title ? input.title.trim() : undefined,
+      goal: input.goal !== undefined ? (input.goal ? input.goal.trim() : null) : undefined,
+      description:
+        input.description !== undefined
+          ? input.description
+            ? input.description.trim()
+            : null
+          : undefined,
+      isActive: input.isActive !== undefined ? input.isActive : undefined,
+    },
+  });
+
+  await writeAudit(prisma, {
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    action: "TRAINING_PROGRAM_UPDATED",
+    resource: "training_program",
+    resourceId: programId,
+    metadata: { fields: Object.keys(input) },
+  });
+
+  return updated;
+}
+
+/**
+ * Exclui ou arquiva um programa de treino do estúdio.
+ * - Se houver sessões já concluídas pelo aluno, inativa o programa e arquiva para preservar o histórico fisiológico.
+ * - Se não houver histórico concluído, remove o programa e sua árvore completa de dias/prescrições.
+ */
+export async function deleteTrainingProgramForTenant(
+  ctx: TenantContext,
+  programId: string
+) {
+  assertCoach(ctx);
+
+  const program = await prisma.trainingProgram.findFirst({
+    where: { id: programId, tenantId: ctx.tenantId },
+    select: { id: true, title: true, studentProfileId: true },
+  });
+
+  if (!program) {
+    throw new NotFoundError("Programa de treino não encontrado.");
+  }
+
+  const completedSessionsCount = await prisma.workoutSession.count({
+    where: {
+      tenantId: ctx.tenantId,
+      programVersion: { programId: program.id },
+      status: "COMPLETED",
+    },
+  });
+
+  return prisma.$transaction(async (tx) => {
+    if (completedSessionsCount > 0) {
+      await tx.trainingProgram.update({
+        where: { id: program.id },
+        data: { isActive: false },
+      });
+
+      await tx.trainingProgramVersion.updateMany({
+        where: { programId: program.id, status: "DRAFT" },
+        data: { status: "ARCHIVED" },
+      });
+
+      await writeAudit(tx, {
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: "TRAINING_PROGRAM_ARCHIVED",
+        resource: "training_program",
+        resourceId: program.id,
+        metadata: { title: program.title, reason: "has_completed_sessions" },
+      });
+
+      return { ok: true, archived: true, message: "Programa desativado para preservar o histórico do aluno." };
+    }
+
+    await tx.workoutSession.deleteMany({
+      where: {
+        tenantId: ctx.tenantId,
+        programVersion: { programId: program.id },
+      },
+    });
+
+    const versions = await tx.trainingProgramVersion.findMany({
+      where: { programId: program.id },
+      select: { id: true },
+    });
+
+    for (const v of versions) {
+      const days = await tx.trainingDay.findMany({
+        where: { versionId: v.id },
+        select: { id: true },
+      });
+
+      for (const d of days) {
+        await tx.workoutSetPrescribed.deleteMany({
+          where: { workoutExercise: { trainingDayId: d.id } },
+        });
+        await tx.workoutExercise.deleteMany({
+          where: { trainingDayId: d.id },
+        });
+      }
+
+      await tx.trainingDay.deleteMany({
+        where: { versionId: v.id },
+      });
+    }
+
+    await tx.trainingProgramVersion.deleteMany({
+      where: { programId: program.id },
+    });
+
+    await tx.trainingProgram.delete({
+      where: { id: program.id },
+    });
+
+    await writeAudit(tx, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      action: "TRAINING_PROGRAM_DELETED",
+      resource: "training_program",
+      resourceId: program.id,
+      metadata: { title: program.title },
+    });
+
+    return { ok: true, deleted: true, message: "Programa excluído com sucesso." };
+  });
+}

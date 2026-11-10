@@ -19,5 +19,22 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: fitflow-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # Porta incomum para não colidir com instâncias Redis locais já instaladas.
+      - "127.0.0.1:63799:6379"
+    volumes:
+      - fitflow-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   fitflow-pgdata:
+  fitflow-redisdata:
