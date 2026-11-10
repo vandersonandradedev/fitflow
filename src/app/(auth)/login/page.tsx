@@ -1,10 +1,23 @@
 import Link from "next/link";
-import { Dumbbell, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Dumbbell } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string; welcome?: string; verified?: string }>;
+}) {
+  const params = await searchParams;
+  let banner: string | null = null;
+  if (params.reset === "1") {
+    banner = "Senha atualizada com sucesso. Entre com a nova senha.";
+  } else if (params.welcome === "1") {
+    banner = "Conta de aluno ativada! Entre com seu e-mail e a senha que você definiu.";
+  } else if (params.verified === "1") {
+    banner = "E-mail confirmado com sucesso! Agora você já pode entrar.";
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#090B0E] p-4">
       <Card className="w-full max-w-md border-[#242C3A] bg-[#12161D] shadow-2xl">
@@ -18,36 +31,8 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#F3F5F7]">E-mail</label>
-            <Input
-              type="email"
-              placeholder="seu.email@exemplo.com"
-              className="bg-[#090B0E] border-[#242C3A]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#F3F5F7]">Senha</label>
-              <Link href="#" className="text-xs text-emerald-400 hover:underline">
-                Esqueceu a senha?
-              </Link>
-            </div>
-            <Input
-              type="password"
-              placeholder="••••••••"
-              className="bg-[#090B0E] border-[#242C3A]"
-            />
-          </div>
-
-          <Link href="/coach/dashboard">
-            <Button className="w-full mt-2 bg-emerald-500 hover:bg-emerald-600 text-[#090B0E] font-semibold gap-2">
-              Entrar na Plataforma
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <CardContent>
+          <LoginForm banner={banner} />
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-3 border-t border-[#242C3A]/60 pt-4 text-center text-xs text-[#9BA3AF]">

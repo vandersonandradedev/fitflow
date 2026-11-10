@@ -28,8 +28,19 @@ describe("Domain Schemas & Validation Rules", () => {
         tenantName: "Lucas Training Studio",
         email: "lucas@fitflow.app",
         password: "securePassword123",
+        acceptTerms: "on",
       });
       expect(result.success).toBe(true);
+    });
+
+    it("rejects coach registration without terms acceptance", () => {
+      const result = registerCoachSchema.safeParse({
+        name: "Lucas Personal",
+        tenantName: "Lucas Training Studio",
+        email: "lucas@fitflow.app",
+        password: "securePassword123",
+      });
+      expect(result.success).toBe(false);
     });
   });
 
