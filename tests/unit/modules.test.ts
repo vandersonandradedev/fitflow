@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loginSchema, registerCoachSchema } from "@/modules/auth";
+import { customExerciseSchema, safeMediaUrlSchema } from "@/modules/exercises";
 import { createStudentInviteSchema } from "@/modules/students";
 import { prescribedSetSchema } from "@/modules/workouts";
 import { logSetSchema } from "@/modules/sessions";
@@ -75,6 +76,32 @@ describe("Domain Schemas & Validation Rules", () => {
         completed: true,
       });
       expect(result.success).toBe(true);
+    });
+
+    it("validates custom exercise schema and strips unknown fields like tenantId/isGlobal", () => {
+      const result = customExerciseSchema.safeParse({
+        categoryId: "11111111-1111-4111-8111-111111111111",
+        name: "Agachamento Búlgaro com Halteres",
+        primaryMuscleGroup: "Quadríceps e Glúteos",
+        secondaryMuscleGroups: ["Core"],
+        equipment: "DUMBBELL",
+        difficulty: "INTERMEDIATE",
+        tenantId: "fake-tenant",
+        isGlobal: true,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect("tenantId" in result.data).toBe(false);
+        expect("isGlobal" in result.data).toBe(false);
+      }
+    });
+
+    it("validates safe media URLs and rejects unsafe schemes", () => {
+      expect(safeMediaUrlSchema.safeParse("https://www.youtube.com/watch?v=abc").success).toBe(true);
+      expect(safeMediaUrlSchema.safeParse("/images/exercises/push.svg").success).toBe(true);
+      expect(safeMediaUrlSchema.safeParse("javascript:alert(1)").success).toBe(false);
+      expect(safeMediaUrlSchema.safeParse("http://insecure.com/img.png").success).toBe(false);
+      expect(safeMediaUrlSchema.safeParse("/images/../etc/passwd").success).toBe(false);
     });
   });
 });

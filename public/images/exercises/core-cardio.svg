@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none">
+  <rect width="400" height="240" rx="16" fill="#12161D"/>
+  <rect x="12" y="12" width="376" height="216" rx="12" stroke="#242C3A" stroke-dasharray="4 4"/>
+  <!-- Core / Mobility / Cardio Pulse Illustration -->
+  <circle cx="200" cy="115" r="52" stroke="#242C3A" stroke-width="6"/>
+  <path d="M135 115 L170 115 L184 85 L202 145 L218 100 L230 115 L265 115" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="200" y="216" text-anchor="middle" fill="#9BA3AF" font-family="sans-serif" font-size="12" font-weight="600">ESTABILIDADE, CARDIO E MOBILIDADE</text>
+</svg>

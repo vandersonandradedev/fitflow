@@ -31,7 +31,7 @@ export async function contextFor(email: string): Promise<TenantContext> {
 
 /** Cadastro real de personal + verificação real de e-mail. */
 export async function createCoach(label: string) {
-  const email = `${label}@coach.test`;
+  const email = `${label.toLowerCase()}@coach.test`;
   await registerCoach(
     { name: `Personal ${label}`, tenantName: `Studio ${label}`, email, password: PASSWORD, acceptTerms: "on" },
     meta,
@@ -43,7 +43,7 @@ export async function createCoach(label: string) {
 
 /** Convite real + aceite real. */
 export async function createStudent(coach: TenantContext, label: string) {
-  const email = `${label}@aluno.test`;
+  const email = `${label.toLowerCase()}@aluno.test`;
   await inviteStudent(coach, { email, name: `Aluno ${label}` });
   await acceptInvite({ token: tokenFromLastEmail(email), password: PASSWORD, acceptTerms: "on" }, meta);
   const ctx = await contextFor(email);

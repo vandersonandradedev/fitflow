@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none">
+  <rect width="400" height="240" rx="16" fill="#12161D"/>
+  <rect x="12" y="12" width="376" height="216" rx="12" stroke="#242C3A" stroke-dasharray="4 4"/>
+  <!-- Squat Rack & Lower Body Illustration -->
+  <line x1="115" y1="45" x2="115" y2="185" stroke="#333F53" stroke-width="8" stroke-linecap="round"/>
+  <line x1="285" y1="45" x2="285" y2="185" stroke="#333F53" stroke-width="8" stroke-linecap="round"/>
+  <line x1="75" y1="85" x2="325" y2="85" stroke="#10B981" stroke-width="6" stroke-linecap="round"/>
+  <rect x="85" y="62" width="16" height="46" rx="3" fill="#10B981"/>
+  <rect x="299" y="62" width="16" height="46" rx="3" fill="#10B981"/>
+  <path d="M200 110 L200 155 M192 120 L200 108 L208 120 M192 145 L200 157 L208 145" stroke="#34D399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="200" y="216" text-anchor="middle" fill="#9BA3AF" font-family="sans-serif" font-size="12" font-weight="600">MEMBROS INFERIORES E QUADRIL</text>
+</svg>
