@@ -1,0 +1,600 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==============================================================================
+// 1. IDENTIDADE, AUTENTICAÇÃO E MULTI-TENANCY
+// ==============================================================================
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum TenantRole {
+  OWNER
+  COACH
+  STUDENT
+}
+
+enum StudentStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum FitnessGoal {
+  HYPERTROPHY
+  WEIGHT_LOSS
+  STRENGTH
+  HEALTH
+  REHABILITATION
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String       @db.VarChar(255)
+  slug      String       @unique @db.VarChar(100)
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  members             TenantMember[]
+  studentProfiles     StudentProfile[]
+  studentInvites      StudentInvite[]
+  customExercises     Exercise[]
+  trainingPrograms    TrainingProgram[]
+  workoutTemplates    WorkoutTemplate[]
+  workoutSessions     WorkoutSession[]
+  physicalAssessments PhysicalAssessment[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@map("tenants")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?   @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  emailVerified DateTime? @map("email_verified")
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
+  image         String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  accounts            Account[]
+  sessions            Session[]
+  memberships         TenantMember[]
+  studentProfiles     StudentProfile[]
+  sentInvites         StudentInvite[]      @relation("SentInvites")
+  conductedAssessments PhysicalAssessment[] @relation("ConductedAssessments")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model TenantMember {
+  id        String     @id @default(uuid())
+  tenantId  String     @map("tenant_id")
+  userId    String     @map("user_id")
+  role      TenantRole @default(STUDENT)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
+  @@map("tenant_members")
+}
+
+model StudentProfile {
+  id               String          @id @default(uuid())
+  tenantId         String          @map("tenant_id")
+  userId           String          @map("user_id")
+  phone            String?         @db.VarChar(30)
+  birthDate        DateTime?       @map("birth_date") @db.Date
+  fitnessGoal      FitnessGoal     @default(HYPERTROPHY) @map("fitness_goal")
+  experienceLevel  ExperienceLevel @default(BEGINNER) @map("experience_level")
+  status           StudentStatus   @default(ACTIVE)
+  trainerNotes     String?         @map("trainer_notes") @db.Text
+  healthConditions String?         @map("health_conditions") @db.Text
+  deletedAt        DateTime?       @map("deleted_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  trainingPrograms    TrainingProgram[]
+  workoutSessions     WorkoutSession[]
+  physicalAssessments PhysicalAssessment[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, userId])
+  @@map("student_profiles")
+}
+
+model StudentInvite {
+  id               String       @id @default(uuid())
+  tenantId         String       @map("tenant_id")
+  invitedByUserId  String       @map("invited_by_user_id")
+  email            String       @db.VarChar(255)
+  tokenHash        String       @unique @map("token_hash") @db.VarChar(255)
+  status           InviteStatus @default(PENDING)
+  expiresAt        DateTime     @map("expires_at")
+  acceptedAt       DateTime?    @map("accepted_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedBy User   @relation("SentInvites", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, email])
+  @@index([tokenHash])
+  @@map("student_invites")
+}
+
+// --- Auth.js Models ---
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String   @db.VarChar(255)
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("password_reset_tokens")
+}
+
+// ==============================================================================
+// 2. BIBLIOTECA DE EXERCÍCIOS
+// ==============================================================================
+
+enum EquipmentType {
+  BARBELL
+  DUMBBELL
+  MACHINE
+  CABLE
+  BODYWEIGHT
+  KETTLEBELL
+  BAND
+  OTHER
+}
+
+enum MediaType {
+  VIDEO
+  IMAGE
+  GIF
+}
+
+enum StorageProvider {
+  R2
+  YOUTUBE
+  VIMEO
+  EXTERNAL
+}
+
+model ExerciseCategory {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  iconName    String?  @map("icon_name") @db.VarChar(50)
+  orderIndex  Int      @default(0) @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  exercises Exercise[]
+
+  @@map("exercise_categories")
+}
+
+model Exercise {
+  id                   String          @id @default(uuid())
+  tenantId             String?         @map("tenant_id")
+  categoryId           String          @map("category_id")
+  name                 String          @db.VarChar(255)
+  description          String?         @db.Text
+  primaryMuscleGroup   String          @map("primary_muscle_group") @db.VarChar(100)
+  secondaryMuscleGroups String[]       @map("secondary_muscle_groups")
+  equipment            EquipmentType   @default(BODYWEIGHT)
+  difficulty           ExperienceLevel @default(BEGINNER)
+  isGlobal             Boolean         @default(false) @map("is_global")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category     ExerciseCategory      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  media        ExerciseMedia[]
+  instructions ExerciseInstruction[]
+  workoutExercises WorkoutExercise[]
+  exerciseLogs ExerciseLog[]
+
+  @@index([tenantId, isGlobal])
+  @@index([categoryId, name])
+  @@map("exercises")
+}
+
+model ExerciseMedia {
+  id              String          @id @default(uuid())
+  exerciseId      String          @map("exercise_id")
+  mediaType       MediaType       @default(IMAGE) @map("media_type")
+  url             String          @db.VarChar(500)
+  storageProvider StorageProvider @default(EXTERNAL) @map("storage_provider")
+  thumbnailUrl    String?         @map("thumbnail_url") @db.VarChar(500)
+  orderIndex      Int             @default(0) @map("order_index")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId, orderIndex])
+  @@map("exercise_media")
+}
+
+model ExerciseInstruction {
+  id         String  @id @default(uuid())
+  exerciseId String  @map("exercise_id")
+  stepNumber Int     @map("step_number")
+  instruction String @db.Text
+  safetyTip  String? @map("safety_tip") @db.Text
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, stepNumber])
+  @@map("exercise_instructions")
+}
+
+// ==============================================================================
+// 3. PRESCRIÇÃO DE TREINAMENTO E VERSIONAMENTO
+// ==============================================================================
+
+enum ProgramVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+  ANY
+}
+
+enum WorkoutSectionType {
+  WARMUP
+  MAIN
+  COOLDOWN
+}
+
+model TrainingProgram {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  studentProfileId String    @map("student_profile_id")
+  title            String    @db.VarChar(255)
+  description      String?   @db.Text
+  goal             String?   @db.VarChar(100)
+  startDate        DateTime  @default(now()) @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  tenant         Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentProfile StudentProfile           @relation(fields: [studentProfileId], references: [id], onDelete: Restrict)
+  versions       TrainingProgramVersion[]
+
+  @@index([tenantId, studentProfileId, isActive])
+  @@map("training_programs")
+}
+
+model TrainingProgramVersion {
+  id            String               @id @default(uuid())
+  programId     String               @map("program_id")
+  versionNumber Int                  @default(1) @map("version_number")
+  status        ProgramVersionStatus @default(DRAFT)
+  notes         String?              @db.Text
+  publishedAt   DateTime?            @map("published_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  program         TrainingProgram  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  trainingDays    TrainingDay[]
+  workoutSessions WorkoutSession[]
+
+  @@index([programId, status])
+  @@map("training_program_versions")
+}
+
+model TrainingDay {
+  id          String    @id @default(uuid())
+  versionId   String    @map("version_id")
+  name        String    @db.VarChar(100)
+  dayOfWeek   DayOfWeek @default(ANY) @map("day_of_week")
+  description String?   @db.Text
+  orderIndex  Int       @default(0) @map("order_index")
+
+  version         TrainingProgramVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  workoutExercises WorkoutExercise[]
+  workoutSessions WorkoutSession[]
+
+  @@index([versionId, orderIndex])
+  @@map("training_days")
+}
+
+model WorkoutExercise {
+  id              String             @id @default(uuid())
+  trainingDayId   String             @map("training_day_id")
+  exerciseId      String             @map("exercise_id")
+  supersetGroupId String?            @map("superset_group_id") @db.VarChar(50)
+  sectionType     WorkoutSectionType @default(MAIN) @map("section_type")
+  orderIndex      Int                @default(0) @map("order_index")
+  coachNotes      String?            @map("coach_notes") @db.Text
+
+  trainingDay  TrainingDay            @relation(fields: [trainingDayId], references: [id], onDelete: Cascade)
+  exercise     Exercise               @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  sets         WorkoutSetPrescribed[]
+  exerciseLogs ExerciseLog[]
+
+  @@index([trainingDayId, orderIndex])
+  @@map("workout_exercises")
+}
+
+model WorkoutSetPrescribed {
+  id                String   @id @default(uuid())
+  workoutExerciseId String   @map("workout_exercise_id")
+  setNumber         Int      @map("set_number")
+  repsTarget        String   @map("reps_target") @db.VarChar(50)
+  suggestedLoadKg   Decimal? @map("suggested_load_kg") @db.Decimal(6, 2)
+  restSeconds       Int      @default(60) @map("rest_seconds")
+  tempo             String?  @db.VarChar(20)
+  targetRpe         Decimal? @map("target_rpe") @db.Decimal(3, 1)
+
+  workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+
+  @@index([workoutExerciseId, setNumber])
+  @@map("workout_sets_prescribed")
+}
+
+model WorkoutTemplate {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  title        String   @db.VarChar(255)
+  category     String?  @db.VarChar(100)
+  templateData Json     @map("template_data")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@map("workout_templates")
+}
+
+// ==============================================================================
+// 4. EXECUÇÃO DE TREINOS
+// ==============================================================================
+
+enum WorkoutSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model WorkoutSession {
+  id                   String               @id @default(uuid())
+  tenantId             String               @map("tenant_id")
+  studentProfileId     String               @map("student_profile_id")
+  programVersionId     String               @map("program_version_id")
+  trainingDayId        String               @map("training_day_id")
+  startedAt            DateTime             @default(now()) @map("started_at")
+  completedAt          DateTime?            @map("completed_at")
+  status               WorkoutSessionStatus @default(IN_PROGRESS)
+  perceivedExertionRpe Int?                 @map("perceived_exertion_rpe")
+  studentFeedback      String?              @map("student_feedback") @db.Text
+  totalDurationSeconds Int?                 @map("total_duration_seconds")
+  totalVolumeKg        Decimal?             @map("total_volume_kg") @db.Decimal(10, 2)
+
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentProfile StudentProfile         @relation(fields: [studentProfileId], references: [id], onDelete: Restrict)
+  programVersion TrainingProgramVersion @relation(fields: [programVersionId], references: [id], onDelete: Restrict)
+  trainingDay    TrainingDay            @relation(fields: [trainingDayId], references: [id], onDelete: Restrict)
+  exerciseLogs   ExerciseLog[]
+
+  @@index([tenantId, studentProfileId, completedAt])
+  @@index([status, startedAt])
+  @@map("workout_sessions")
+}
+
+model ExerciseLog {
+  id                String   @id @default(uuid())
+  workoutSessionId  String   @map("workout_session_id")
+  exerciseId        String   @map("exercise_id")
+  workoutExerciseId String?  @map("workout_exercise_id")
+  orderIndex        Int      @default(0) @map("order_index")
+  isCompleted       Boolean  @default(false) @map("is_completed")
+  notes             String?  @db.Text
+
+  workoutSession  WorkoutSession   @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exercise        Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  workoutExercise WorkoutExercise? @relation(fields: [workoutExerciseId], references: [id], onDelete: SetNull)
+  setLogs         SetLog[]
+
+  @@index([workoutSessionId, orderIndex])
+  @@map("exercise_logs")
+}
+
+model SetLog {
+  id               String   @id @default(uuid())
+  exerciseLogId    String   @map("exercise_log_id")
+  setNumber        Int      @map("set_number")
+  prescribedLoadKg Decimal? @map("prescribed_load_kg") @db.Decimal(6, 2)
+  actualLoadKg     Decimal  @map("actual_load_kg") @db.Decimal(6, 2)
+  prescribedReps   String?  @map("prescribed_reps") @db.VarChar(50)
+  actualReps       Int      @map("actual_reps")
+  completed        Boolean  @default(true)
+  restTakenSeconds Int?     @map("rest_taken_seconds")
+  rpe              Decimal? @db.Decimal(3, 1)
+  loggedAt         DateTime @default(now()) @map("logged_at")
+
+  exerciseLog ExerciseLog @relation(fields: [exerciseLogId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseLogId, setNumber])
+  @@map("set_logs")
+}
+
+// ==============================================================================
+// 5. ACOMPANHAMENTO E AVALIAÇÕES FÍSICAS
+// ==============================================================================
+
+model PhysicalAssessment {
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  studentProfileId    String   @map("student_profile_id")
+  evaluatorUserId     String   @map("evaluator_user_id")
+  assessmentDate      DateTime @default(now()) @map("assessment_date") @db.Date
+  weightKg            Decimal  @map("weight_kg") @db.Decimal(5, 2)
+  heightCm            Decimal? @map("height_cm") @db.Decimal(5, 2)
+  bodyFatPercentage   Decimal? @map("body_fat_percentage") @db.Decimal(4, 2)
+  muscleMassPercentage Decimal? @map("muscle_mass_percentage") @db.Decimal(4, 2)
+  notes               String?  @db.Text
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile    @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  evaluator      User              @relation("ConductedAssessments", fields: [evaluatorUserId], references: [id], onDelete: Restrict)
+  measurements   BodyMeasurement[]
+
+  @@index([tenantId, studentProfileId, assessmentDate])
+  @@map("physical_assessments")
+}
+
+model BodyMeasurement {
+  id           String  @id @default(uuid())
+  assessmentId String  @map("assessment_id")
+  chestCm      Decimal? @map("chest_cm") @db.Decimal(5, 2)
+  waistCm      Decimal? @map("waist_cm") @db.Decimal(5, 2)
+  abdomenCm    Decimal? @map("abdomen_cm") @db.Decimal(5, 2)
+  hipsCm       Decimal? @map("hips_cm") @db.Decimal(5, 2)
+  rightArmCm   Decimal? @map("right_arm_cm") @db.Decimal(5, 2)
+  leftArmCm    Decimal? @map("left_arm_cm") @db.Decimal(5, 2)
+  rightThighCm Decimal? @map("right_thigh_cm") @db.Decimal(5, 2)
+  leftThighCm  Decimal? @map("left_thigh_cm") @db.Decimal(5, 2)
+  rightCalfCm  Decimal? @map("right_calf_cm") @db.Decimal(5, 2)
+  leftCalfCm   Decimal? @map("left_calf_cm") @db.Decimal(5, 2)
+
+  assessment PhysicalAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("body_measurements")
+}
+
+// ==============================================================================
+// 6. NOTIFICAÇÕES E AUDITORIA
+// ==============================================================================
+
+enum NotificationType {
+  WORKOUT_ASSIGNED
+  WORKOUT_COMPLETED
+  PR_ACHIEVED
+  INVITE
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  tenantId  String           @map("tenant_id")
+  userId    String           @map("user_id")
+  title     String           @db.VarChar(255)
+  message   String           @db.Text
+  type      NotificationType @default(SYSTEM)
+  link      String?          @db.VarChar(500)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String?  @map("tenant_id")
+  userId     String?  @map("user_id")
+  action     String   @db.VarChar(100)
+  resource   String   @db.VarChar(100)
+  resourceId String?  @map("resource_id") @db.VarChar(100)
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, action, createdAt])
+  @@map("audit_logs")
+}
