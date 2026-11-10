@@ -4,8 +4,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { requireStudentContext } from "@/server/auth/session";
 
-export default async function StudentTodayPage() {
+const JS_DAY_TO_ENUM = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+] as const;
+
+export default async function StudentTodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dayId?: string }>;
+}) {
   const ctx = await requireStudentContext();
+  const params = await searchParams;
 
   const [studentUser, activeProgram] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { name: true } }),
@@ -59,7 +74,13 @@ export default async function StudentTodayPage() {
   ]);
 
   const publishedVersion = activeProgram?.versions[0];
-  const trainingDay = publishedVersion?.trainingDays[0];
+  const todayDow = JS_DAY_TO_ENUM[new Date().getDay()];
+  const trainingDay =
+    (params.dayId
+      ? publishedVersion?.trainingDays.find((d) => d.id === params.dayId)
+      : undefined) ??
+    publishedVersion?.trainingDays.find((d) => d.dayOfWeek === todayDow) ??
+    publishedVersion?.trainingDays[0];
 
   return (
     <div className="space-y-5">
