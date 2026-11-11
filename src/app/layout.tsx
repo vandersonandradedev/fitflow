@@ -60,6 +60,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="FitFlow" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans min-h-dvh overflow-x-hidden bg-background text-foreground antialiased`}
       >
