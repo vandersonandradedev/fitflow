@@ -1,9 +1,21 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Smartphone, Users } from "lucide-react";
+import { auth } from "@/server/auth/auth";
+import { resolveTenantContext } from "@/server/auth/context";
 import { Button } from "@/components/ui/button";
 import { FitFlowLogo, FitFlowIcon } from "@/components/ui/logo";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth().catch(() => null);
+  if (session?.user?.id && session.sessionVersion >= 0) {
+    const ctx = await resolveTenantContext(session.user.id, session.sessionVersion).catch(() => null);
+    if (ctx) {
+      if (ctx.role === "STUDENT") redirect("/student/today");
+      redirect("/coach/dashboard");
+    }
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* Header */}
