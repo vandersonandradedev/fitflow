@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
+import { SafeImage } from "@/components/ui/safe-image";
 import { prisma } from "@/lib/db";
 import { requireStudentContext } from "@/server/auth/session";
 import { startSessionAction } from "../session/actions";
@@ -281,12 +282,40 @@ export default async function StudentTodayPage({
 
             <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
               {trainingDay.workoutExercises.map((item, idx) => (
-                <div key={item.id} className="p-4 space-y-3">
+                <div key={item.id} className="p-4 space-y-3 transition-colors hover:bg-secondary/20">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="flex items-start gap-3 min-w-0">
                       <span className="mt-0.5 font-mono text-xs font-semibold text-primary tabular-nums">
                         {String(idx + 1).padStart(2, "0")}
                       </span>
+
+                      {item.exercise.media[0]?.url && (
+                        <ExerciseGuideDialog
+                          exercise={{
+                            name: item.exercise.name,
+                            categoryName: item.exercise.category.name,
+                            primaryMuscleGroup: item.exercise.primaryMuscleGroup,
+                            mediaUrl: item.exercise.media[0]?.url ?? null,
+                            coachNotes: item.coachNotes,
+                            instructions: item.exercise.instructions,
+                          }}
+                          triggerLabel=""
+                          triggerVariant="ghost"
+                          triggerClassName="p-0 h-auto rounded-md overflow-hidden shrink-0 group border border-border/80"
+                        >
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-secondary cursor-pointer">
+                            <SafeImage
+                              src={item.exercise.media[0].url}
+                              alt={item.exercise.name}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">
+                              <Play className="h-3 w-3 fill-white text-white drop-shadow" />
+                            </div>
+                          </div>
+                        </ExerciseGuideDialog>
+                      )}
+
                       <div className="min-w-0">
                         <h4 className="text-sm font-semibold text-foreground">
                           {item.exercise.name}
@@ -307,7 +336,7 @@ export default async function StudentTodayPage({
                         instructions: item.exercise.instructions,
                       }}
                       triggerLabel="Detalhes"
-                      triggerClassName="h-9 shrink-0 px-2.5 text-xs"
+                      triggerClassName="h-9 shrink-0 px-2.5 text-xs font-medium"
                     />
                   </div>
 

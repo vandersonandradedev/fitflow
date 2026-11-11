@@ -35,11 +35,13 @@ export function StudentShell({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/student/today" className="flex items-center gap-2 shrink-0">
-            <Dumbbell className="h-4 w-4 text-primary" />
-            <span className="text-sm sm:text-base font-semibold tracking-tight text-foreground">
+          <Link href="/student/today" className="flex items-center gap-2 shrink-0 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 transition-transform group-hover:scale-105">
+              <Dumbbell className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">
               FitFlow
             </span>
           </Link>
@@ -57,9 +59,9 @@ export function StudentShell({
                   key={tab.href}
                   href={tab.href}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150",
                     active
-                      ? "bg-secondary text-foreground"
+                      ? "bg-secondary text-primary font-semibold shadow-sm"
                       : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                   )}
                 >
@@ -74,14 +76,14 @@ export function StudentShell({
             <span className="truncate text-xs text-muted-foreground max-w-[130px] sm:max-w-[180px]">
               {tenantName}
             </span>
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold text-foreground">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-foreground ring-1 ring-border">
               {initial}
             </div>
             <form action={logoutAction}>
               <button
                 type="submit"
                 aria-label="Sair"
-                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -98,7 +100,7 @@ export function StudentShell({
       {/* Bottom Ergonomic Navigation Bar for Gym Mobile Use */}
       <nav
         aria-label="Menu inferior do aluno"
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/75 pb-[env(safe-area-inset-bottom)] md:hidden shadow-lg shadow-black/20"
       >
         <div className="mx-auto grid h-16 max-w-lg grid-cols-4 items-center">
           {STUDENT_TABS.map((tab) => {
@@ -109,17 +111,17 @@ export function StudentShell({
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "relative flex h-full flex-col items-center justify-center transition-colors duration-150",
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  "relative flex h-full flex-col items-center justify-center transition-colors duration-150 touch-manipulation select-none active:scale-95",
+                  active ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute top-0 left-4 right-4 h-0.5 rounded-b bg-primary"
+                    className="absolute top-0 left-4 right-4 h-0.5 rounded-b bg-primary shadow-[0_0_8px_rgba(16,185,129,0.5)]"
                   />
                 )}
-                <Icon className="h-5 w-5" />
+                <Icon className={cn("h-5 w-5", active && "drop-shadow-[0_0_6px_rgba(16,185,129,0.3)]")} />
                 <span className="mt-1 text-[11px] font-medium">{tab.label}</span>
               </Link>
             );

@@ -9,11 +9,7 @@ import {
   CheckCircle2,
   Clock,
   MessageSquare,
-  Minus,
-  Pause,
   Play,
-  Plus,
-  SkipForward,
   WifiOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { RestChronometer } from "@/components/ui/rest-chronometer";
+import { SafeImage } from "@/components/ui/safe-image";
 import { StoryCardDialog } from "@/components/ui/story-card-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -83,27 +82,6 @@ const RPE_DESCRIPTIONS: Record<number, string> = {
   10: "Máximo absoluto — Esforço até a falha muscular",
 };
 
-function playAudioChime() {
-  try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
-  } catch {}
-}
-
 export function WorkoutRunner({
   sessionId,
   dayName,
@@ -133,10 +111,13 @@ export function WorkoutRunner({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const [restTimer, setRestTimer] = useState<{
+    key: number;
     active: boolean;
     remaining: number;
     total: number;
+    nextSetLabel?: string;
   }>({
+    key: 0,
     active: false,
     remaining: 0,
     total: 60,
@@ -201,26 +182,7 @@ export function WorkoutRunner({
     return () => clearInterval(timer);
   }, [startedAtIso]);
 
-  useEffect(() => {
-    if (!restTimer.active || restTimer.remaining <= 0) return;
 
-    const interval = setInterval(() => {
-      setRestTimer((prev) => {
-        if (prev.remaining <= 1) {
-          playAudioChime();
-          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-            try {
-              navigator.vibrate([200, 100, 200]);
-            } catch {}
-          }
-          return { ...prev, active: false, remaining: 0 };
-        }
-        return { ...prev, remaining: prev.remaining - 1 };
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [restTimer.active, restTimer.remaining]);
 
   const activeExercise = exercises[activeExerciseIndex] ?? exercises[0];
   const lastSets = activeExercise ? lastPerformanceMap[activeExercise.exerciseId] ?? [] : [];
@@ -277,11 +239,25 @@ export function WorkoutRunner({
 
     if (willComplete) {
       const restSeconds = targetSet.restTakenSeconds ?? 60;
-      setRestTimer({
+      let nextLabel = "";
+      const currentEx = exercises[exerciseIdx];
+      if (setIdx + 1 < currentEx.sets.length) {
+        const nextSet = currentEx.sets[setIdx + 1];
+        nextLabel = `Próxima: Série ${nextSet.setNumber} · ${currentEx.name}`;
+      } else if (exerciseIdx + 1 < exercises.length) {
+        const nextEx = exercises[exerciseIdx + 1];
+        nextLabel = `Próximo: ${nextEx.name} (Série 1)`;
+      } else {
+        nextLabel = "Último exercício completado!";
+      }
+
+      setRestTimer((p) => ({
+        key: p.key + 1,
         active: true,
         remaining: restSeconds,
         total: restSeconds,
-      });
+        nextSetLabel: nextLabel,
+      }));
     }
   };
 
@@ -352,8 +328,8 @@ export function WorkoutRunner({
   return (
     <div className="space-y-4">
       {/* Top Session Control Bar */}
-      <div className="sticky top-14 z-30 flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3.5 py-2.5">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="sticky top-14 z-30 flex items-center justify-between gap-2 rounded-lg border border-border bg-card/95 px-3.5 py-2.5 backdrop-blur-md shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-primary">
             <Clock className="h-4 w-4 shrink-0" />
             <span>{formatTime(elapsedSeconds)}</span>
@@ -373,109 +349,53 @@ export function WorkoutRunner({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setRestTimer((p) => ({
+                key: p.key + 1,
+                active: true,
+                remaining: 60,
+                total: 60,
+                nextSetLabel: "Descanso manual",
+              }));
+            }}
+            className="h-9 px-2.5 font-mono text-xs text-muted-foreground hover:text-primary hover:border-primary/50"
+            aria-label="Iniciar cronômetro de descanso manual"
+          >
+            <Clock className="h-3.5 w-3.5 mr-1 text-primary" />
+            Descanso
+          </Button>
+
           <Badge variant="outline" className="font-mono tabular-nums">
             {completedSetsCount}/{totalSetsCount}
           </Badge>
           <Button
             size="sm"
             onClick={() => setShowFinishModal(true)}
-            className="h-10 px-3.5"
+            className="h-9 px-3.5 font-semibold"
           >
             Finalizar
           </Button>
         </div>
       </div>
 
-      {/* Rest Timer Panel (Ergonomic >= 44px touch targets) */}
+      {/* High-Impact Rest Chronometer with Circular Ring and Floating Mini-Bar */}
       {restTimer.remaining > 0 && (
-        <section
-          aria-label="Cronômetro de descanso"
-          className="rounded-lg border border-primary/40 bg-card p-4 space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
-              Descanso entre séries
-            </span>
-            <span className="font-mono text-2xl font-bold tabular-nums text-primary">
-              {formatTime(restTimer.remaining)}
-            </span>
-          </div>
-
-          <div className="h-1.5 w-full overflow-hidden rounded-sm bg-secondary">
-            <div
-              className="h-full bg-primary transition-[width] duration-300"
-              style={{
-                width: `${Math.max(
-                  0,
-                  Math.min(100, (restTimer.remaining / (restTimer.total || 60)) * 100)
-                )}%`,
-              }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-11 min-w-[64px] font-mono text-xs"
-                onClick={() =>
-                  setRestTimer((p) => ({
-                    ...p,
-                    remaining: Math.max(0, p.remaining - 15),
-                  }))
-                }
-              >
-                <Minus className="h-3.5 w-3.5" />
-                15s
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-11 min-w-[64px] font-mono text-xs"
-                onClick={() =>
-                  setRestTimer((p) => ({
-                    ...p,
-                    remaining: p.remaining + 30,
-                    total: Math.max(p.total, p.remaining + 30),
-                  }))
-                }
-              >
-                <Plus className="h-3.5 w-3.5" />
-                30s
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-11 w-11"
-                aria-label={restTimer.active ? "Pausar descanso" : "Retomar descanso"}
-                onClick={() =>
-                  setRestTimer((p) => ({ ...p, active: !p.active }))
-                }
-              >
-                {restTimer.active ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-11 px-3 text-xs"
-                onClick={() =>
-                  setRestTimer({ active: false, remaining: 0, total: 60 })
-                }
-              >
-                <SkipForward className="h-4 w-4" />
-                Pular
-              </Button>
-            </div>
-          </div>
-        </section>
+        <RestChronometer
+          key={restTimer.key}
+          initialSeconds={restTimer.remaining}
+          autoStart={restTimer.active}
+          nextSetLabel={restTimer.nextSetLabel}
+          onFinish={() => {
+            setRestTimer((p) => ({ ...p, active: false, remaining: 0 }));
+          }}
+          onCancel={() => {
+            setRestTimer((p) => ({ ...p, active: false, remaining: 0 }));
+          }}
+        />
       )}
 
       {/* Exercise Switcher Tabs */}
@@ -506,26 +426,55 @@ export function WorkoutRunner({
 
       {/* Active Exercise Execution Card */}
       {activeExercise && (
-        <section className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="border-b border-border bg-popover/50 p-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-primary">
-                  {activeExercise.categoryName} · {activeExercise.primaryMuscleGroup}
-                </p>
-                <h2 className="mt-0.5 text-lg font-semibold text-foreground">
-                  {activeExercise.name}
-                </h2>
+        <section className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="border-b border-border bg-popover/40 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                {activeExercise.mediaUrl && (
+                  <ExerciseGuideDialog
+                    exercise={{
+                      name: activeExercise.name,
+                      categoryName: activeExercise.categoryName,
+                      primaryMuscleGroup: activeExercise.primaryMuscleGroup,
+                      mediaUrl: activeExercise.mediaUrl,
+                      coachNotes: activeExercise.coachNotes,
+                      instructions: activeExercise.instructions,
+                    }}
+                    triggerLabel=""
+                    triggerVariant="ghost"
+                    triggerClassName="p-0 h-auto rounded-lg overflow-hidden shrink-0 group border border-border/80 focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-lg bg-black/40 cursor-pointer">
+                      <SafeImage
+                        src={activeExercise.mediaUrl}
+                        alt={activeExercise.name}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">
+                        <Play className="h-4 w-4 fill-white text-white drop-shadow" />
+                      </div>
+                    </div>
+                  </ExerciseGuideDialog>
+                )}
+
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-primary">
+                    {activeExercise.categoryName} · {activeExercise.primaryMuscleGroup}
+                  </p>
+                  <h2 className="mt-0.5 text-lg font-bold text-foreground tracking-tight">
+                    {activeExercise.name}
+                  </h2>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <Badge variant="outline" className="font-mono tabular-nums">
+                <Badge variant="outline" className="font-mono text-xs tabular-nums font-semibold">
                   {activeExerciseIndex + 1}/{exercises.length}
                 </Badge>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
               <ExerciseGuideDialog
                 exercise={{
                   name: activeExercise.name,
@@ -535,14 +484,14 @@ export function WorkoutRunner({
                   coachNotes: activeExercise.coachNotes,
                   instructions: activeExercise.instructions,
                 }}
-                triggerLabel="Instruções e vídeo"
-                triggerClassName="h-10 px-3 text-xs"
+                triggerLabel="Ver instruções e vídeo"
+                triggerClassName="h-9 px-3 text-xs font-medium"
               />
             </div>
 
             {activeExercise.coachNotes && (
-              <p className="border-l-2 border-primary/50 pl-3 text-xs text-muted-foreground">
-                <strong className="text-foreground">Treinador:</strong>{" "}
+              <p className="border-l-2 border-primary/60 bg-primary/[0.04] pl-3 py-1.5 pr-2 rounded-r text-xs text-muted-foreground leading-relaxed">
+                <strong className="text-foreground font-semibold">Treinador:</strong>{" "}
                 {activeExercise.coachNotes}
               </p>
             )}
@@ -566,20 +515,23 @@ export function WorkoutRunner({
                   return (
                     <div
                       key={set.setNumber}
-                      className={`grid grid-cols-[36px_1fr_68px_58px_48px] gap-1.5 sm:gap-2.5 items-center py-2.5 transition-colors duration-150 ${
-                        set.completed ? "bg-emerald-500/[0.04]" : ""
-                      }`}
+                      className={cn(
+                        "grid grid-cols-[36px_1fr_68px_58px_48px] gap-1.5 sm:gap-2.5 items-center py-2.5 transition-all duration-150 rounded-sm px-1",
+                        set.completed
+                          ? "bg-emerald-500/[0.08] border-l-2 border-emerald-500"
+                          : "hover:bg-secondary/40"
+                      )}
                     >
                       <div className="font-mono text-xs font-semibold tabular-nums text-foreground">
                         #{set.setNumber}
                       </div>
 
                       <div className="min-w-0 text-[11px] leading-tight">
-                        <p className="font-mono tabular-nums text-foreground">
+                        <p className="font-mono tabular-nums text-foreground font-medium">
                           {set.prescribedReps ? `${set.prescribedReps} reps` : "—"}
                         </p>
                         {lastSet ? (
-                          <p className="truncate font-mono text-[10px] tabular-nums text-primary">
+                          <p className="truncate font-mono text-[10px] tabular-nums text-primary font-medium">
                             Ant: {lastSet.loadKg}×{lastSet.reps}
                           </p>
                         ) : (
@@ -607,7 +559,10 @@ export function WorkoutRunner({
                               actualLoadKg: val,
                             }));
                           }}
-                          className="h-11 px-1.5 text-center font-mono text-sm font-semibold tabular-nums"
+                          className={cn(
+                            "h-11 px-1.5 text-center font-mono text-sm font-semibold tabular-nums transition-colors",
+                            set.completed && "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+                          )}
                         />
                       </div>
 
@@ -626,7 +581,10 @@ export function WorkoutRunner({
                               actualReps: val,
                             }));
                           }}
-                          className="h-11 px-1.5 text-center font-mono text-sm font-semibold tabular-nums"
+                          className={cn(
+                            "h-11 px-1.5 text-center font-mono text-sm font-semibold tabular-nums transition-colors",
+                            set.completed && "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+                          )}
                         />
                       </div>
 
@@ -634,16 +592,17 @@ export function WorkoutRunner({
                         <button
                           type="button"
                           onClick={() => toggleSetCompleted(activeExerciseIndex, setIdx)}
-                          className={`flex h-11 w-11 items-center justify-center rounded-md border transition-colors duration-150 ${
+                          className={cn(
+                            "flex h-11 w-11 items-center justify-center rounded-lg border transition-all duration-150 touch-manipulation active:scale-95 shadow-sm",
                             set.completed
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-muted-foreground hover:border-brand-borderStrong hover:text-foreground"
-                          }`}
+                              ? "border-emerald-500 bg-emerald-500 text-black font-bold shadow-emerald-500/20"
+                              : "border-border bg-secondary/50 text-muted-foreground hover:border-emerald-500/50 hover:text-foreground"
+                          )}
                           aria-label={`Marcar série ${set.setNumber} como concluída`}
                           aria-pressed={set.completed}
                         >
                           <CheckCircle2
-                            className={`h-5 w-5 ${set.completed ? "stroke-[2.5]" : ""}`}
+                            className={cn("h-5 w-5", set.completed ? "stroke-[2.5]" : "")}
                           />
                         </button>
                       </div>

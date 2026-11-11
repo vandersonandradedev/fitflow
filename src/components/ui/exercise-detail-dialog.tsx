@@ -31,25 +31,31 @@ export function ExerciseGuideDialog({
   triggerVariant = "outline",
   triggerSize = "sm",
   triggerClassName,
+  children,
 }: {
   exercise: ExerciseGuideData;
   triggerLabel?: string;
   triggerVariant?: "outline" | "ghost" | "secondary";
   triggerSize?: "sm" | "default";
   triggerClassName?: string;
+  children?: React.ReactNode;
 }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant={triggerVariant}
-          size={triggerSize}
-          className={triggerClassName}
-        >
-          <PlayCircle className="h-4 w-4 text-primary" />
-          {triggerLabel}
-        </Button>
+        {children ? (
+          children
+        ) : (
+          <Button
+            type="button"
+            variant={triggerVariant}
+            size={triggerSize}
+            className={triggerClassName}
+          >
+            <PlayCircle className="h-4 w-4 text-primary" />
+            {triggerLabel}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
