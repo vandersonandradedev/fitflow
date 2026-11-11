@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Dumbbell, Smartphone, Users } from "lucide-react";
+import { ArrowRight, Smartphone, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FitFlowLogo, FitFlowIcon } from "@/components/ui/logo";
 
 export default function HomePage() {
   return (
@@ -8,11 +9,8 @@ export default function HomePage() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background">
         <div className="container mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 min-w-0">
-            <Dumbbell className="h-4 w-4 shrink-0 text-primary" />
-            <span className="text-base font-semibold tracking-tight text-foreground">
-              FitFlow
-            </span>
+          <Link href="/" className="flex items-center min-w-0 transition-transform hover:scale-105">
+            <FitFlowLogo size="sm" priority />
           </Link>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -99,7 +97,10 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-border py-6 text-xs text-brand-textMuted">
         <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <span>© {new Date().getFullYear()} FitFlow</span>
+          <div className="flex items-center gap-2">
+            <FitFlowIcon size="sm" />
+            <span>© {new Date().getFullYear()} FitFlow</span>
+          </div>
           <span>Plataforma de gestão e execução de treinamento físico</span>
         </div>
       </footer>

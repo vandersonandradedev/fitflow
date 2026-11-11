@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   BookOpen,
   Calendar,
-  Dumbbell,
   Images,
   LayoutDashboard,
   LineChart,
@@ -17,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FitFlowLogo } from "@/components/ui/logo";
 
 interface CoachShellProps {
   tenantName: string;
@@ -67,11 +67,8 @@ export function CoachShell({
     <div className="flex h-full flex-col bg-card">
       {/* Brand Header */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-        <Link href="/coach/dashboard" className="flex items-center gap-2 min-w-0">
-          <Dumbbell className="h-4 w-4 shrink-0 text-primary" />
-          <span className="text-base font-semibold tracking-tight text-foreground">
-            FitFlow
-          </span>
+        <Link href="/coach/dashboard" className="flex items-center min-w-0 transition-transform hover:scale-105">
+          <FitFlowLogo size="sm" priority />
         </Link>
 
         <button

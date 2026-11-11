@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, Dumbbell, History, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FitFlowLogo } from "@/components/ui/logo";
 
 interface StudentShellProps {
   tenantName: string;
@@ -37,13 +38,8 @@ export function StudentShell({
       {/* Top Bar */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/student/today" className="flex items-center gap-2 shrink-0 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 transition-transform group-hover:scale-105">
-              <Dumbbell className="h-4 w-4 text-primary" />
-            </div>
-            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">
-              FitFlow
-            </span>
+          <Link href="/student/today" className="flex items-center shrink-0 group transition-transform group-hover:scale-105">
+            <FitFlowLogo size="sm" priority />
           </Link>
 
           {/* Desktop/Tablet Inline Navigation */}

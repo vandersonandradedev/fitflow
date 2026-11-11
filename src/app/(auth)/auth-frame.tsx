@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Dumbbell } from "lucide-react";
+import { FitFlowLogo } from "@/components/ui/logo";
 
 interface AuthFrameProps {
   title: string;
@@ -13,9 +13,8 @@ export function AuthFrame({ title, description, children, footer }: AuthFramePro
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="flex items-center justify-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-foreground">
-            <Dumbbell className="h-4 w-4 text-primary" />
-            <span className="text-base font-semibold tracking-tight">FitFlow</span>
+          <Link href="/" className="inline-flex items-center text-foreground transition-transform hover:scale-105">
+            <FitFlowLogo size="md" priority />
           </Link>
         </div>
 
