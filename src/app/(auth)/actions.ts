@@ -1,5 +1,6 @@
 "use server";
 
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { acceptInvite } from "@/modules/students/invites";
@@ -22,23 +23,27 @@ const LOGIN_ERRORS: Record<string, string> = {
 };
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const state = await toActionState(async () => {
-    try {
-      await signIn("credentials", {
-        email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? ""),
-        redirect: false,
-      });
-    } catch (error) {
-      if (error instanceof AuthError) {
-        const code = (error as AuthError & { code?: string }).code ?? "invalid_credentials";
-        return { error: LOGIN_ERRORS[code] ?? LOGIN_ERRORS.invalid_credentials };
-      }
-      throw error;
+  try {
+    await signIn("credentials", {
+      email: String(formData.get("email") ?? ""),
+      password: String(formData.get("password") ?? ""),
+      redirectTo: "/coach/dashboard",
+    });
+  } catch (error) {
+    // Auth.js v5 signIn() lança NEXT_REDIRECT no sucesso — re-lançar para o Next.js processar
+    if (isRedirectError(error)) throw error;
+
+    if (error instanceof AuthError) {
+      const code = (error as AuthError & { code?: string }).code ?? "invalid_credentials";
+      return { error: LOGIN_ERRORS[code] ?? LOGIN_ERRORS.invalid_credentials };
     }
-  });
-  if (state.ok) redirect("/coach/dashboard"); // alunos são redirecionados pelo layout do treinador
-  return state;
+
+    console.error("[loginAction] erro inesperado:", error);
+    return { error: "Algo deu errado. Tente novamente em instantes." };
+  }
+
+  // Nunca chega aqui — signIn com sucesso sempre lança redirect
+  return { ok: true };
 }
 
 export async function logoutAction(): Promise<void> {
