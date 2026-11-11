@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { PwaServiceWorkerRegister } from "@/components/pwa-service-worker-register";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,6 +22,15 @@ export const metadata: Metadata = {
     "Plataforma SaaS profissional para personal trainers independentes prescreverem e acompanharem treinamentos com alta velocidade e precisão.",
   keywords: ["personal trainer", "musculação", "treinos", "fitness", "saas", "periodização"],
   manifest: "/manifest.json",
+  applicationName: "FitFlow",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FitFlow",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -36,8 +46,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0A0C0F",
+  interactiveWidget: "resizes-content",
+  themeColor: "#090B0E",
 };
 
 export default function RootLayout({
@@ -51,6 +64,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans min-h-dvh overflow-x-hidden bg-background text-foreground antialiased`}
       >
         <PwaServiceWorkerRegister />
+        <PwaInstallBanner />
         {children}
       </body>
     </html>

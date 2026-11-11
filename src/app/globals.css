@@ -37,11 +37,70 @@
 
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+
+  /* Liberar seleção de texto apenas em inputs, textareas e campos editáveis */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+    touch-action: auto;
+  }
+
+  /* No iOS Safari, qualquer input com font-size menor que 16px força zoom de tela indesejado */
+  @media screen and (max-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
+  /* Desativar arrasto de links e imagens (comportamento de documento web) */
+  img,
+  a {
+    -webkit-user-drag: none;
+  }
+}
+
+/* Utilitários de Safe Area para entalhes (Notch / Dynamic Island / Barra Inferior) */
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .top-safe {
+    top: env(safe-area-inset-top, 0px);
+  }
+  .bottom-safe {
+    bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

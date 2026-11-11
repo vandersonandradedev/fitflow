@@ -178,7 +178,7 @@ export function CoachShell({
           />
           <aside
             aria-label="Menu lateral móvel"
-            className="relative z-10 flex h-full w-64 max-w-[85vw] flex-col border-r border-border bg-card"
+            className="relative z-10 flex h-full w-64 max-w-[85vw] flex-col border-r border-border bg-card pt-safe pb-safe"
           >
             {sidebarContent}
           </aside>
@@ -188,46 +188,48 @@ export function CoachShell({
       {/* Main Content Area */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top Bar */}
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 sm:px-6">
-          <div className="flex items-center gap-2.5 min-w-0 md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Abrir menu"
-              aria-expanded={mobileMenuOpen}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:border-brand-borderStrong"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="min-w-0">
-              <span className="block text-sm font-semibold text-foreground leading-tight">
-                FitFlow
-              </span>
-              <span className="block truncate text-xs text-muted-foreground leading-tight">
+        <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-background pt-safe">
+          <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+            <div className="flex items-center gap-2.5 min-w-0 md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Abrir menu"
+                aria-expanded={mobileMenuOpen}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground hover:border-brand-borderStrong"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground leading-tight">
+                  FitFlow
+                </span>
+                <span className="block truncate text-xs text-muted-foreground leading-tight">
+                  {tenantName}
+                </span>
+              </div>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 min-w-0">
+              <span className="truncate text-sm font-medium text-muted-foreground">
                 {tenantName}
               </span>
             </div>
-          </div>
 
-          <div className="hidden md:flex items-center gap-2 min-w-0">
-            <span className="truncate text-sm font-medium text-muted-foreground">
-              {tenantName}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/coach/workouts"
-              className="hidden sm:inline-flex items-center rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-brand-borderStrong hover:text-foreground"
-            >
-              Editor de Treinos
-            </Link>
-            <Link
-              href="/coach/students"
-              className="inline-flex items-center rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-brand-borderStrong hover:bg-secondary"
-            >
-              Alunos
-            </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/coach/workouts"
+                className="hidden sm:inline-flex items-center rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-brand-borderStrong hover:text-foreground"
+              >
+                Editor de Treinos
+              </Link>
+              <Link
+                href="/coach/students"
+                className="inline-flex items-center rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-brand-borderStrong hover:bg-secondary"
+              >
+                Alunos
+              </Link>
+            </div>
           </div>
         </header>
 

@@ -35,10 +35,10 @@ export function StudentShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+      {/* Top Bar com Safe Area para Notch / Ilha Dinâmica */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 pt-safe">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/student/today" className="flex items-center shrink-0 group transition-transform group-hover:scale-105">
+          <Link href="/student/today" className="flex items-center shrink-0 group transition-transform group-hover:scale-105 active:scale-95">
             <FitFlowLogo size="sm" priority />
           </Link>
 
@@ -93,10 +93,10 @@ export function StudentShell({
         {children}
       </main>
 
-      {/* Bottom Ergonomic Navigation Bar for Gym Mobile Use */}
+      {/* Bottom Ergonomic Navigation Bar for Gym Mobile Use (estilo App Nativo) */}
       <nav
         aria-label="Menu inferior do aluno"
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/90 backdrop-blur-md supports-[backdrop-filter]:bg-card/75 pb-[env(safe-area-inset-bottom)] md:hidden shadow-lg shadow-black/20"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-card/95 backdrop-blur-lg supports-[backdrop-filter]:bg-card/90 pb-safe md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.4)] select-none"
       >
         <div className="mx-auto grid h-16 max-w-lg grid-cols-4 items-center">
           {STUDENT_TABS.map((tab) => {
@@ -107,18 +107,18 @@ export function StudentShell({
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "relative flex h-full flex-col items-center justify-center transition-colors duration-150 touch-manipulation select-none active:scale-95",
-                  active ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
+                  "relative flex h-full flex-col items-center justify-center transition-all duration-150 touch-manipulation select-none active:scale-90",
+                  active ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground active:text-foreground"
                 )}
               >
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute top-0 left-4 right-4 h-0.5 rounded-b bg-primary shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                    className="absolute top-0 left-5 right-5 h-0.5 rounded-b bg-primary shadow-[0_0_8px_rgba(16,185,129,0.7)]"
                   />
                 )}
-                <Icon className={cn("h-5 w-5", active && "drop-shadow-[0_0_6px_rgba(16,185,129,0.3)]")} />
-                <span className="mt-1 text-[11px] font-medium">{tab.label}</span>
+                <Icon className={cn("h-5 w-5 transition-transform", active && "scale-105 drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]")} />
+                <span className="mt-1 text-[11px] font-medium tracking-tight">{tab.label}</span>
               </Link>
             );
           })}

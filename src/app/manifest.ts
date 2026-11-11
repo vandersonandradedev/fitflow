@@ -6,9 +6,13 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "FitFlow",
     description: "SaaS de gestão de personal trainers e prescrição de treinamento físico.",
     start_url: "/student/today",
+    scope: "/",
     display: "standalone",
+    orientation: "portrait",
     background_color: "#090B0E",
-    theme_color: "#10B981",
+    theme_color: "#090B0E",
+    categories: ["fitness", "health", "sports", "productivity"],
+    lang: "pt-BR",
     icons: [
       {
         src: "/icons/icon-192.png",
