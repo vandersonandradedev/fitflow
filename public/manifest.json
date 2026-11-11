@@ -2,7 +2,7 @@
   "name": "FitFlow — Personal Training & Fitness",
   "short_name": "FitFlow",
   "description": "SaaS Multi-Tenant de Gestão de Personal Trainers e Treinamento Físico",
-  "start_url": "/student/today",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

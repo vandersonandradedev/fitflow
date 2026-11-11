@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "FitFlow — Gestão & Treinamento Físico",
     short_name: "FitFlow",
     description: "SaaS de gestão de personal trainers e prescrição de treinamento físico.",
-    start_url: "/student/today",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
