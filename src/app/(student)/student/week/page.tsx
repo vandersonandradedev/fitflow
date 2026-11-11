@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getPublishedProgramForStudent } from "@/modules/workouts/service";
+import { prisma } from "@/lib/db";
 import {
   DAY_OF_WEEK_LABELS,
   DAY_OF_WEEK_SHORT,
@@ -10,9 +10,46 @@ import {
 } from "@/modules/workouts/types";
 import { requireStudentContext } from "@/server/auth/session";
 
-export default async function StudentWeeklySchedulePage() {
+export default async function StudentWeeklySchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ programId?: string }>;
+}) {
   const ctx = await requireStudentContext();
-  const activeProgram = await getPublishedProgramForStudent(ctx);
+  const params = await searchParams;
+
+  const activePrograms = await prisma.trainingProgram.findMany({
+    where: {
+      tenantId: ctx.tenantId,
+      studentProfileId: ctx.studentProfileId,
+      isActive: true,
+      versions: { some: { status: "PUBLISHED" } },
+    },
+    include: {
+      versions: {
+        where: { status: "PUBLISHED" },
+        orderBy: { versionNumber: "desc" },
+        take: 1,
+        include: {
+          trainingDays: {
+            orderBy: { orderIndex: "asc" },
+            include: {
+              workoutExercises: {
+                select: { id: true, sets: { select: { id: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const activeProgram =
+    (params.programId
+      ? activePrograms.find((p) => p.id === params.programId)
+      : undefined) ?? activePrograms[0];
+
   const publishedVersion = activeProgram?.versions[0];
 
   return (
@@ -23,6 +60,27 @@ export default async function StudentWeeklySchedulePage() {
           Sua divisão de treinos
         </h1>
       </div>
+
+      {activePrograms.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {activePrograms.map((p) => {
+            const isSelected = p.id === activeProgram?.id;
+            return (
+              <Link
+                key={p.id}
+                href={`/student/week?programId=${p.id}`}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 border border-border"
+                }`}
+              >
+                {p.title}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {!activeProgram || !publishedVersion ? (
         <EmptyState
@@ -60,7 +118,7 @@ export default async function StudentWeeklySchedulePage() {
               return (
                 <li key={day.id}>
                   <Link
-                    href={`/student/today?dayId=${day.id}`}
+                    href={`/student/today?programId=${activeProgram.id}&dayId=${day.id}`}
                     className="flex min-h-[64px] items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">

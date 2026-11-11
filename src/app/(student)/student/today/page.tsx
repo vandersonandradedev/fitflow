@@ -22,21 +22,22 @@ const JS_DAY_TO_ENUM = [
 export default async function StudentTodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dayId?: string }>;
+  searchParams: Promise<{ dayId?: string; programId?: string }>;
 }) {
   const ctx = await requireStudentContext();
   const params = await searchParams;
 
-  const [studentUser, activeProgram, inProgressSession] = await Promise.all([
+  const [studentUser, activePrograms, inProgressSession] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: ctx.userId },
       select: { name: true },
     }),
-    prisma.trainingProgram.findFirst({
+    prisma.trainingProgram.findMany({
       where: {
         tenantId: ctx.tenantId,
         studentProfileId: ctx.studentProfileId,
         isActive: true,
+        versions: { some: { status: "PUBLISHED" } },
       },
       select: {
         id: true,
@@ -99,6 +100,7 @@ export default async function StudentTodayPage({
           },
         },
       },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.workoutSession.findFirst({
       where: {
@@ -115,6 +117,11 @@ export default async function StudentTodayPage({
       orderBy: { startedAt: "desc" },
     }),
   ]);
+
+  const activeProgram =
+    (params.programId
+      ? activePrograms.find((p) => p.id === params.programId)
+      : undefined) ?? activePrograms[0];
 
   const publishedVersion = activeProgram?.versions[0];
   const todayDow = JS_DAY_TO_ENUM[new Date().getDay()];
@@ -175,6 +182,28 @@ export default async function StudentTodayPage({
         />
       ) : (
         <>
+          {/* Program Switcher (When student has multiple routines e.g. Treino + Alongamento) */}
+          {activePrograms.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {activePrograms.map((p) => {
+                const isSelected = p.id === activeProgram.id;
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/student/today?programId=${p.id}`}
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 border border-border"
+                    }`}
+                  >
+                    {p.title}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
           {/* Active Training Day Focus Header */}
           <section className="rounded-lg border border-border bg-card p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -230,7 +259,7 @@ export default async function StudentTodayPage({
                 return (
                   <Link
                     key={d.id}
-                    href={`/student/today?dayId=${d.id}`}
+                    href={`/student/today?programId=${activeProgram.id}&dayId=${d.id}`}
                     className={`shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors min-h-[38px] inline-flex items-center ${
                       active
                         ? "border-primary/40 bg-secondary text-foreground"
