@@ -3,6 +3,7 @@ import { Clock, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
 import { listStudentSessionHistory } from "@/modules/sessions/service";
 import { requireStudentContext } from "@/server/auth/session";
 
@@ -12,11 +13,14 @@ export default async function StudentHistoryPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-xs text-muted-foreground">Histórico de atividades</p>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Seus treinos concluídos
-        </h1>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Histórico de atividades</p>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Seus treinos concluídos
+          </h1>
+        </div>
+        <OfflineSyncBadge />
       </div>
 
       {sessions.length === 0 ? (

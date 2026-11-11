@@ -70,6 +70,7 @@ model Tenant {
   notifications       Notification[]
   auditLogs           AuditLog[]
   mediaGallery        TenantMedia[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("tenants")
 }
@@ -97,6 +98,7 @@ model User {
   conductedAssessments PhysicalAssessment[] @relation("ConductedAssessments")
   notifications       Notification[]
   auditLogs           AuditLog[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([email])
   @@map("users")
@@ -611,6 +613,7 @@ enum NotificationType {
   PR_ACHIEVED
   INVITE
   SYSTEM
+  CHURN_ALERT
 }
 
 model Notification {
@@ -630,6 +633,24 @@ model Notification {
   @@index([userId, read, createdAt])
   @@index([tenantId, createdAt])
   @@map("notifications")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  userId    String   @map("user_id")
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@map("push_subscriptions")
 }
 
 model AuditLog {

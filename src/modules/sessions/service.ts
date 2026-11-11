@@ -333,13 +333,41 @@ export async function finishWorkoutSession(
         Math.round(data.totalDurationSeconds / 60)
       );
 
+      // Checa se bateu recorde pessoal de tonelagem (PR)
+      const previousMaxSession = await tx.workoutSession.findFirst({
+        where: {
+          tenantId: ctx.tenantId,
+          studentProfileId: session.studentProfileId,
+          id: { not: session.id },
+          status: "COMPLETED",
+        },
+        orderBy: { totalVolumeKg: "desc" },
+        select: { totalVolumeKg: true },
+      });
+
+      const prevMax = previousMaxSession?.totalVolumeKg ? Number(previousMaxSession.totalVolumeKg) : 0;
+      const isRecordVolume = Boolean(previousMaxSession) && totalVolumeKg > 0 && totalVolumeKg > prevMax;
+      const isHighRpe = (data.perceivedExertionRpe ?? 0) >= 9;
+
+      let title = "Treino Concluído!";
+      let type: "WORKOUT_COMPLETED" | "PR_ACHIEVED" = "WORKOUT_COMPLETED";
+
+      if (isRecordVolume) {
+        title = "Novo Recorde de Carga (PR)!";
+        type = "PR_ACHIEVED";
+      } else if (isHighRpe) {
+        title = "Treino Intenso Concluído!";
+      }
+
+      const rpeText = data.perceivedExertionRpe ? ` · RPE ${data.perceivedExertionRpe}/10` : "";
+
       await tx.notification.create({
         data: {
           tenantId: ctx.tenantId,
           userId: coachMember.userId,
-          type: "WORKOUT_COMPLETED",
-          title: "Treino Concluído!",
-          message: `${studentName} concluiu "${session.trainingDay.name}" (${totalVolumeKg.toLocaleString("pt-BR")} kg em ${durationMin} min).`,
+          type,
+          title,
+          message: `${studentName} concluiu "${session.trainingDay.name}" (${totalVolumeKg.toLocaleString("pt-BR")} kg em ${durationMin} min${rpeText}).`,
           link: `/coach/students/${session.studentProfileId}`,
         },
       });

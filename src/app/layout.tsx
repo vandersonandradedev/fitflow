@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { PwaServiceWorkerRegister } from "@/components/pwa-service-worker-register";
 import "./globals.css";
 
 const inter = Inter({
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans min-h-dvh overflow-x-hidden bg-background text-foreground antialiased`}
       >
+        <PwaServiceWorkerRegister />
         {children}
       </body>
     </html>

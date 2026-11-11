@@ -14,6 +14,7 @@ import {
   Play,
   Plus,
   SkipForward,
+  WifiOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,14 @@ import {
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  clearActiveSessionOffline,
+  enqueuePendingSessionOffline,
+  loadActiveSessionOffline,
+  saveActiveSessionOffline,
+  subscribeNetworkStatus,
+  syncPendingSessionsOffline,
+} from "@/lib/offline-sync";
 import { abandonSessionAction, finishSessionAction } from "../actions";
 
 export interface RunnerSet {
@@ -110,10 +119,11 @@ export function WorkoutRunner({
   lastPerformanceMap: Record<string, LastPerformanceSet[]>;
 }) {
   const router = useRouter();
-  const storageKey = `fitflow_session_${sessionId}`;
 
   const [exercises, setExercises] = useState<RunnerExercise[]>(initialExercises);
   const [hydratedStorage, setHydratedStorage] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineSavedNotification, setOfflineSavedNotification] = useState(false);
 
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -134,25 +144,48 @@ export function WorkoutRunner({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Inicializa conexão de rede e carrega dados locais
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(storageKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length === initialExercises.length) {
-          setExercises(parsed);
-        }
-      }
-    } catch {}
-    setHydratedStorage(true);
-  }, [storageKey, initialExercises.length]);
+    if (typeof navigator !== "undefined") {
+      setIsOnline(navigator.onLine);
+    }
 
+    const unsubscribe = subscribeNetworkStatus(async (online) => {
+      setIsOnline(online);
+      if (online) {
+        // Tenta sincronizar treinos enfileirados em segundo plano
+        await syncPendingSessionsOffline(finishSessionAction);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Carrega estado offline da sessão ativa (IndexedDB com fallback para LocalStorage)
+  useEffect(() => {
+    let mounted = true;
+    async function restore() {
+      try {
+        const cached = await loadActiveSessionOffline<RunnerExercise[]>(sessionId);
+        if (mounted && cached && Array.isArray(cached) && cached.length === initialExercises.length) {
+          setExercises(cached);
+        }
+      } catch {}
+      if (mounted) {
+        setHydratedStorage(true);
+      }
+    }
+    restore();
+    return () => {
+      mounted = false;
+    };
+  }, [sessionId, initialExercises.length]);
+
+  // Persiste a sessão ativa no IndexedDB a cada alteração de séries/repetições/cargas
   useEffect(() => {
     if (!hydratedStorage) return;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(exercises));
-    } catch {}
-  }, [exercises, storageKey, hydratedStorage]);
+    saveActiveSessionOffline(sessionId, exercises);
+  }, [exercises, sessionId, hydratedStorage]);
 
   useEffect(() => {
     const start = new Date(startedAtIso).getTime();
@@ -279,16 +312,35 @@ export function WorkoutRunner({
       })),
     };
 
-    const res = await finishSessionAction(payload);
-    setIsSubmitting(false);
+    const saveOfflineAndNotify = async () => {
+      await enqueuePendingSessionOffline(payload);
+      await clearActiveSessionOffline(sessionId);
+      setIsSubmitting(false);
+      setOfflineSavedNotification(true);
+      setTimeout(() => {
+        router.push("/student/history");
+      }, 1600);
+    };
 
-    if (res.ok) {
-      try {
-        localStorage.removeItem(storageKey);
-      } catch {}
-      router.push("/student/history");
-    } else {
-      setSubmitError(res.message ?? "Erro ao salvar treino no servidor.");
+    // Se estiver sem conexão no momento, enfileira localmente no aparelho
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineAndNotify();
+      return;
+    }
+
+    try {
+      const res = await finishSessionAction(payload);
+      setIsSubmitting(false);
+
+      if (res.ok) {
+        await clearActiveSessionOffline(sessionId);
+        router.push("/student/history");
+      } else {
+        setSubmitError(res.message ?? "Erro ao salvar treino no servidor.");
+      }
+    } catch {
+      // Falha de rede catastrófica (queda de sinal na academia)
+      await saveOfflineAndNotify();
     }
   };
 
@@ -308,6 +360,11 @@ export function WorkoutRunner({
             </strong>{" "}
             kg
           </span>
+          {!isOnline && (
+            <span className="flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-500">
+              <WifiOff className="h-3 w-3" /> Offline
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -639,9 +696,50 @@ export function WorkoutRunner({
             {submitError && (
               <div
                 role="alert"
-                className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300"
+                className="space-y-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300"
               >
-                {submitError}
+                <p>{submitError}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const payload = {
+                      sessionId,
+                      totalDurationSeconds: Math.max(1, elapsedSeconds),
+                      perceivedExertionRpe: rpe,
+                      studentFeedback: studentFeedback.trim() || undefined,
+                      exercises: exercises.map((ex, idx) => ({
+                        exerciseId: ex.exerciseId,
+                        workoutExerciseId: ex.workoutExerciseId ?? undefined,
+                        orderIndex: idx,
+                        isCompleted: ex.sets.every((s) => s.completed),
+                        notes: ex.coachNotes ?? undefined,
+                        sets: ex.sets.map((s) => ({
+                          setNumber: s.setNumber,
+                          prescribedLoadKg:
+                            s.prescribedLoadKg !== null && s.prescribedLoadKg !== undefined
+                              ? Number(s.prescribedLoadKg)
+                              : undefined,
+                          actualLoadKg: Number(s.actualLoadKg) || 0,
+                          prescribedReps: s.prescribedReps ?? undefined,
+                          actualReps: Number(s.actualReps) || 0,
+                          completed: s.completed,
+                          restTakenSeconds: s.restTakenSeconds ?? undefined,
+                          rpe: s.rpe ? Number(s.rpe) : undefined,
+                        })),
+                      })),
+                    };
+                    await enqueuePendingSessionOffline(payload);
+                    await clearActiveSessionOffline(sessionId);
+                    setShowFinishModal(false);
+                    setOfflineSavedNotification(true);
+                    setTimeout(() => router.push("/student/history"), 1600);
+                  }}
+                  className="w-full border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                >
+                  Salvar no aparelho e sincronizar depois
+                </Button>
               </div>
             )}
 
@@ -747,6 +845,21 @@ export function WorkoutRunner({
           </Button>
         </form>
       </div>
+
+      {/* Offline Saved Confirmation Dialog */}
+      <Dialog open={offlineSavedNotification}>
+        <DialogContent className="text-center sm:max-w-md">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <DialogTitle className="mt-2 text-base font-semibold">
+            Treino Salvo com Sucesso no Aparelho!
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Você está sem conexão no momento. Seu treino foi gravado localmente no celular e será enviado automaticamente para o seu treinador assim que tiver sinal de internet.
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

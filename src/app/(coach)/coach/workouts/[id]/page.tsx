@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
+import { CopilotLoadDialog } from "@/components/ui/copilot-load-dialog";
 import {
   Table,
   TableBody,
@@ -359,57 +360,65 @@ export default async function CoachWorkoutBuilderPage({
                       )}
                     </div>
 
-                    {isDraft && (
-                      <div className="flex items-center gap-1">
-                        <form action={moveTrainingDayAction}>
-                          <input type="hidden" name="programId" value={program.id} />
-                          <input type="hidden" name="versionId" value={activeVersion.id} />
-                          <input type="hidden" name="trainingDayId" value={day.id} />
-                          <input type="hidden" name="direction" value="up" />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="icon"
-                            disabled={dayIndex === 0}
-                            className="h-8 w-8"
-                            title="Subir dia"
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          </Button>
-                        </form>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CopilotLoadDialog
+                        trainingDayId={day.id}
+                        dayName={day.name}
+                        isDraft={isDraft}
+                      />
 
-                        <form action={moveTrainingDayAction}>
-                          <input type="hidden" name="programId" value={program.id} />
-                          <input type="hidden" name="versionId" value={activeVersion.id} />
-                          <input type="hidden" name="trainingDayId" value={day.id} />
-                          <input type="hidden" name="direction" value="down" />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="icon"
-                            disabled={dayIndex === activeVersion.trainingDays.length - 1}
-                            className="h-8 w-8"
-                            title="Descer dia"
-                          >
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          </Button>
-                        </form>
+                      {isDraft && (
+                        <div className="flex items-center gap-1">
+                          <form action={moveTrainingDayAction}>
+                            <input type="hidden" name="programId" value={program.id} />
+                            <input type="hidden" name="versionId" value={activeVersion.id} />
+                            <input type="hidden" name="trainingDayId" value={day.id} />
+                            <input type="hidden" name="direction" value="up" />
+                            <Button
+                              type="submit"
+                              variant="outline"
+                              size="icon"
+                              disabled={dayIndex === 0}
+                              className="h-8 w-8"
+                              title="Subir dia"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </Button>
+                          </form>
 
-                        <form action={deleteTrainingDayAction}>
-                          <input type="hidden" name="programId" value={program.id} />
-                          <input type="hidden" name="trainingDayId" value={day.id} />
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                            title="Excluir dia"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </form>
-                      </div>
-                    )}
+                          <form action={moveTrainingDayAction}>
+                            <input type="hidden" name="programId" value={program.id} />
+                            <input type="hidden" name="versionId" value={activeVersion.id} />
+                            <input type="hidden" name="trainingDayId" value={day.id} />
+                            <input type="hidden" name="direction" value="down" />
+                            <Button
+                              type="submit"
+                              variant="outline"
+                              size="icon"
+                              disabled={dayIndex === activeVersion.trainingDays.length - 1}
+                              className="h-8 w-8"
+                              title="Descer dia"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </form>
+
+                          <form action={deleteTrainingDayAction}>
+                            <input type="hidden" name="programId" value={program.id} />
+                            <input type="hidden" name="trainingDayId" value={day.id} />
+                            <Button
+                              type="submit"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                              title="Excluir dia"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {isDraft && (

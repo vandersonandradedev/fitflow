@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
+import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
 import { prisma } from "@/lib/db";
 import { requireStudentContext } from "@/server/auth/session";
 import { startSessionAction } from "../session/actions";
@@ -133,11 +134,14 @@ export default async function StudentTodayPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-xs text-muted-foreground">Olá, {studentUser.name ?? "Aluno"}</p>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Treino de Hoje
-        </h1>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Olá, {studentUser.name ?? "Aluno"}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Treino de Hoje
+          </h1>
+        </div>
+        <OfflineSyncBadge />
       </div>
 
       {/* In-Progress Session Banner */}
