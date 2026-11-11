@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { loginAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ export function LoginForm({
   banner?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
 
   return (
     <form action={formAction} className="space-y-4">
@@ -45,6 +48,8 @@ export function LoginForm({
           type="email"
           required
           autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="seu.email@exemplo.com"
         />
       </div>
@@ -58,14 +63,30 @@ export function LoginForm({
             Esqueceu a senha?
           </Link>
         </div>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="••••••••••"
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            placeholder="••••••••••"
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
+            tabIndex={-1}
+            className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       <Button type="submit" disabled={pending} className="w-full h-10">
