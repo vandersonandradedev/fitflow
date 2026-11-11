@@ -1,5 +1,5 @@
 // FitFlow PWA Service Worker — Offline Support & Web Push
-const CACHE_NAME = "fitflow-pwa-v2";
+const CACHE_NAME = "fitflow-pwa-v3";
 const STATIC_ASSETS = [
   "/manifest.json",
   "/favicon.ico",
@@ -27,65 +27,74 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Intercepta requisições de forma segura: Network First para navegações e assets
+// Intercepta SOMENTE assets estáticos imutáveis (_next/static, icons, images)
+// NUNCA intercepta páginas HTML, navegações, Server Actions, auth ou rotas dinâmicas
 self.addEventListener("fetch", (event) => {
-  // Ignora requisições não-GET
+  // Ignora métodos que não sejam GET
   if (event.request.method !== "GET") {
     return;
   }
 
   const url = new URL(event.request.url);
 
-  // Ignora requisições de origens externas ou extensões de navegador
+  // Ignora origens externas
   if (url.origin !== self.location.origin) {
     return;
   }
 
-  // Ignora rotas de API, Server Actions, auth, HMR (desenvolvimento) e otimizador de imagens
+  // NUNCA intercepta navegações, RSC, Server Actions, APIs ou páginas dinâmicas/autenticadas
   if (
+    event.request.mode === "navigate" ||
+    event.request.headers.get("accept")?.includes("text/html") ||
+    event.request.headers.get("rsc") === "1" ||
+    event.request.headers.get("next-router-prefetch") ||
+    event.request.headers.get("next-action") ||
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/coach") ||
+    url.pathname.startsWith("/student") ||
+    url.pathname.startsWith("/login") ||
+    url.pathname.startsWith("/register") ||
+    url.pathname.startsWith("/invite") ||
+    url.pathname.startsWith("/verify-email") ||
+    url.pathname.startsWith("/forgot-password") ||
+    url.pathname.startsWith("/reset-password") ||
     url.pathname.includes("/_next/webpack-hmr") ||
     url.pathname.includes("/_next/image")
   ) {
+    return; // Passa direto para o navegador lidar nativamente com cookies e redirecionamentos
+  }
+
+  // Apenas faz cache de assets estáticos conhecidos
+  const isStaticAsset =
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/images/") ||
+    url.pathname === "/favicon.ico" ||
+    url.pathname === "/manifest.json";
+
+  if (!isStaticAsset) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // Se a resposta for válida e for asset estático, atualiza o cache
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          (url.pathname.startsWith("/icons/") ||
-            url.pathname.startsWith("/_next/static/"))
-        ) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch((error) => {
-        // Em caso de falha de rede real (offline), busca no cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Para páginas HTML navegadas offline, retorna fallback se existir
-          if (
-            event.request.mode === "navigate" ||
-            event.request.headers.get("accept")?.includes("text/html")
-          ) {
-            return caches.match("/student/today").then((todayCached) => {
-              return todayCached || caches.match("/");
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, clone);
             });
           }
-          // Rejeita normalmente sem fabricar resposta 503 artificial
-          return Promise.reject(error);
+          return networkResponse;
+        })
+        .catch(() => {
+          return cachedResponse || new Response(null, { status: 404 });
         });
-      })
+    })
   );
 });
 

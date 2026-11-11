@@ -20,6 +20,10 @@ export function PwaServiceWorkerRegister() {
 
     navigator.serviceWorker
       .register("/sw.js")
+      .then((registration) => {
+        // Força verificação imediata de nova versão para substituir versões antigas com erro de fetch
+        registration.update().catch(() => {});
+      })
       .catch(() => {
         // Registro silencioso em ambientes locais ou sem HTTPS
       });
