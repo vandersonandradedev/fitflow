@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { Input } from "@/components/ui/input";
+import { StoryCardDialog } from "@/components/ui/story-card-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   clearActiveSessionOffline,
@@ -110,6 +111,7 @@ export function WorkoutRunner({
   startedAtIso,
   initialExercises,
   lastPerformanceMap,
+  studentName,
 }: {
   sessionId: string;
   dayName: string;
@@ -117,6 +119,7 @@ export function WorkoutRunner({
   startedAtIso: string;
   initialExercises: RunnerExercise[];
   lastPerformanceMap: Record<string, LastPerformanceSet[]>;
+  studentName?: string | null;
 }) {
   const router = useRouter();
 
@@ -124,6 +127,7 @@ export function WorkoutRunner({
   const [hydratedStorage, setHydratedStorage] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [offlineSavedNotification, setOfflineSavedNotification] = useState(false);
+  const [showCelebrationDialog, setShowCelebrationDialog] = useState(false);
 
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -334,7 +338,8 @@ export function WorkoutRunner({
 
       if (res.ok) {
         await clearActiveSessionOffline(sessionId);
-        router.push("/student/history");
+        setShowFinishModal(false);
+        setShowCelebrationDialog(true);
       } else {
         setSubmitError(res.message ?? "Erro ao salvar treino no servidor.");
       }
@@ -860,6 +865,31 @@ export function WorkoutRunner({
           </DialogDescription>
         </DialogContent>
       </Dialog>
+
+      {/* Celebration & Instagram Story Card Dialog */}
+      <StoryCardDialog
+        isOpen={showCelebrationDialog}
+        onOpenChange={(open) => {
+          setShowCelebrationDialog(open);
+          if (!open) {
+            router.push("/student/history");
+          }
+        }}
+        data={{
+          workoutName: dayName,
+          studentName: studentName || "Aluno",
+          dateStr: new Date().toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "short",
+          }),
+          totalVolumeKg,
+          durationMinutes: Math.max(1, Math.round(elapsedSeconds / 60)),
+          completedSetsCount,
+          totalSetsCount,
+          rpe,
+        }}
+      />
     </div>
   );
 }

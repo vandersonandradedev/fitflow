@@ -4,12 +4,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
+import { prisma } from "@/lib/db";
 import { listStudentSessionHistory } from "@/modules/sessions/service";
 import { requireStudentContext } from "@/server/auth/session";
+import { ShareStoryButton } from "./share-story-button";
 
 export default async function StudentHistoryPage() {
   const ctx = await requireStudentContext();
-  const sessions = await listStudentSessionHistory(ctx);
+  const [sessions, studentUser] = await Promise.all([
+    listStudentSessionHistory(ctx),
+    prisma.user.findUnique({
+      where: { id: ctx.userId },
+      select: { name: true },
+    }),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -80,16 +88,31 @@ export default async function StudentHistoryPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
-                    {durationMinutes && (
-                      <span className="inline-flex items-center gap-1 text-primary">
-                        <Clock className="h-3.5 w-3.5" />
-                        {durationMinutes} min
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
+                      {durationMinutes && (
+                        <span className="inline-flex items-center gap-1 text-primary">
+                          <Clock className="h-3.5 w-3.5" />
+                          {durationMinutes} min
+                        </span>
+                      )}
+                      <span className="font-semibold text-foreground">
+                        {volumeKg.toLocaleString("pt-BR")} kg
                       </span>
-                    )}
-                    <span className="font-semibold text-foreground">
-                      {volumeKg.toLocaleString("pt-BR")} kg
-                    </span>
+                    </div>
+
+                    <ShareStoryButton
+                      data={{
+                        workoutName: session.trainingDay.name,
+                        studentName: studentUser?.name ?? "Aluno",
+                        dateStr,
+                        totalVolumeKg: volumeKg,
+                        durationMinutes: durationMinutes ?? 45,
+                        completedSetsCount: totalSets,
+                        totalSetsCount: totalSets,
+                        rpe: session.perceivedExertionRpe,
+                      }}
+                    />
                   </div>
                 </div>
 
