@@ -13,24 +13,28 @@ const SIZE_VARIANTS = {
     height: 24,
     width: 137,
     iconSize: 24,
+    logoClass: "h-6",
     textClass: "text-base font-bold",
   },
   md: {
     height: 32,
     width: 183,
     iconSize: 32,
+    logoClass: "h-8",
     textClass: "text-lg font-bold",
   },
   lg: {
     height: 40,
     width: 229,
     iconSize: 40,
+    logoClass: "h-10",
     textClass: "text-xl font-extrabold",
   },
   xl: {
     height: 52,
     width: 297,
     iconSize: 52,
+    logoClass: "h-[52px]",
     textClass: "text-2xl font-extrabold",
   },
 };
@@ -61,7 +65,7 @@ export function FitFlowLogo({
         width={variant.width}
         height={variant.height}
         priority={priority}
-        className="h-auto w-auto max-h-full object-contain"
+        className={cn(variant.logoClass, "w-auto object-contain")}
       />
     </div>
   );
@@ -95,7 +99,7 @@ export function FitFlowIcon({
         width={variant.iconSize * 2}
         height={variant.iconSize * 2}
         priority={priority}
-        className="h-full w-full object-contain drop-shadow-[0_0_8px_rgba(16,185,129,0.25)]"
+        className="h-full w-full object-contain"
       />
     </div>
   );
