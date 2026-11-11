@@ -1,5 +1,5 @@
 // FitFlow PWA Service Worker — Offline Support & Web Push
-const CACHE_NAME = "fitflow-pwa-v1";
+const CACHE_NAME = "fitflow-pwa-v2";
 const STATIC_ASSETS = [
   "/manifest.json",
   "/favicon.ico",
@@ -27,13 +27,25 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Intercepta requisições: Network First para dados dinâmicos, Cache Fallback para estáticos
+// Intercepta requisições de forma segura: Network First para navegações e assets
 self.addEventListener("fetch", (event) => {
-  // Ignora requisições de API, Server Actions (POST) e auth do NextAuth
+  // Ignora requisições não-GET
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  const url = new URL(event.request.url);
+
+  // Ignora requisições de origens externas ou extensões de navegador
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Ignora rotas de API, Server Actions, auth, HMR (desenvolvimento) e otimizador de imagens
   if (
-    event.request.method !== "GET" ||
-    event.request.url.includes("/api/") ||
-    event.request.url.includes("/_next/image")
+    url.pathname.startsWith("/api/") ||
+    url.pathname.includes("/_next/webpack-hmr") ||
+    url.pathname.includes("/_next/image")
   ) {
     return;
   }
@@ -45,8 +57,8 @@ self.addEventListener("fetch", (event) => {
         if (
           networkResponse &&
           networkResponse.status === 200 &&
-          (event.request.url.includes("/icons/") ||
-            event.request.url.includes("/_next/static/"))
+          (url.pathname.startsWith("/icons/") ||
+            url.pathname.startsWith("/_next/static/"))
         ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -55,17 +67,23 @@ self.addEventListener("fetch", (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
-        // Em caso de falha de rede (offline), busca no cache
+      .catch((error) => {
+        // Em caso de falha de rede real (offline), busca no cache
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
           // Para páginas HTML navegadas offline, retorna fallback se existir
-          if (event.request.headers.get("accept")?.includes("text/html")) {
-            return caches.match("/student/today") || caches.match("/");
+          if (
+            event.request.mode === "navigate" ||
+            event.request.headers.get("accept")?.includes("text/html")
+          ) {
+            return caches.match("/student/today").then((todayCached) => {
+              return todayCached || caches.match("/");
+            });
           }
-          return new Response("Offline", { status: 503, statusText: "Offline" });
+          // Rejeita normalmente sem fabricar resposta 503 artificial
+          return Promise.reject(error);
         });
       })
   );
