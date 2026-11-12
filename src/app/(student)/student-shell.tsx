@@ -9,6 +9,7 @@ import { FitFlowLogo } from "@/components/ui/logo";
 interface StudentShellProps {
   tenantName: string;
   initial: string;
+  userImage?: string | null;
   logoutAction: () => Promise<void>;
   children: React.ReactNode;
 }
@@ -23,6 +24,7 @@ const STUDENT_TABS = [
 export function StudentShell({
   tenantName,
   initial,
+  userImage,
   logoutAction,
   children,
 }: StudentShellProps) {
@@ -73,9 +75,18 @@ export function StudentShell({
             <span className="truncate text-xs text-muted-foreground max-w-[130px] sm:max-w-[180px]">
               {tenantName}
             </span>
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-foreground ring-1 ring-border">
-              {initial}
-            </div>
+            {userImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={userImage}
+                alt="Foto de perfil"
+                className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border"
+              />
+            ) : (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-foreground ring-1 ring-border">
+                {initial}
+              </div>
+            )}
             <form action={logoutAction}>
               <button
                 type="submit"

@@ -162,15 +162,34 @@ export default async function CoachStudentsPage({
                     label: student.status,
                     variant: "secondary" as const,
                   };
+                  const studentName = student.user.name ?? "Sem nome";
+                  const studentInitials = (student.user.name ?? student.user.email ?? "A")
+                    .substring(0, 2)
+                    .toUpperCase();
+
                   return (
                     <TableRow key={student.id}>
                       <TableCell>
-                        <Link
-                          href={`/coach/students/${student.id}`}
-                          className="font-medium text-foreground hover:text-primary"
-                        >
-                          {student.user.name ?? "Sem nome"}
-                        </Link>
+                        <div className="flex items-center gap-2.5">
+                          {student.user.image ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={student.user.image}
+                              alt={studentName}
+                              className="h-8 w-8 rounded-full object-cover ring-1 ring-border shrink-0"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-primary ring-1 ring-border">
+                              {studentInitials}
+                            </div>
+                          )}
+                          <Link
+                            href={`/coach/students/${student.id}`}
+                            className="font-medium text-foreground hover:text-primary truncate max-w-[180px] sm:max-w-xs"
+                          >
+                            {studentName}
+                          </Link>
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         <span>{student.user.email}</span>
@@ -209,22 +228,41 @@ export default async function CoachStudentsPage({
                 label: student.status,
                 variant: "secondary" as const,
               };
+              const studentName = student.user.name ?? "Sem nome";
+              const studentInitials = (student.user.name ?? student.user.email ?? "A")
+                .substring(0, 2)
+                .toUpperCase();
+
               return (
                 <li key={student.id}>
                   <Link
                     href={`/coach/students/${student.id}`}
                     className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {student.user.name ?? "Sem nome"}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {student.user.email}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-brand-textMuted">
-                        {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
-                      </p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {student.user.image ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={student.user.image}
+                          alt={studentName}
+                          className="h-9 w-9 rounded-full object-cover ring-1 ring-border shrink-0"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-primary ring-1 ring-border">
+                          {studentInitials}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {studentName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {student.user.email}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-brand-textMuted">
+                          {GOAL_LABELS[student.fitnessGoal] ?? student.fitnessGoal}
+                        </p>
+                      </div>
                     </div>
                     <Badge variant={statusMeta.variant} className="shrink-0">
                       {statusMeta.label}

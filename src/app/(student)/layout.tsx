@@ -14,6 +14,7 @@ export default async function StudentLayout({
     <StudentShell
       tenantName={ctx.tenantName}
       initial={initial}
+      userImage={ctx.userImage}
       logoutAction={logoutAction}
     >
       {children}

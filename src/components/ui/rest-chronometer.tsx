@@ -188,6 +188,17 @@ function formatMinutesSeconds(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+export const STORAGE_KEY_REST_MUTED = "fitflow_rest_timer_muted";
+
+function getStoredMutedState(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(STORAGE_KEY_REST_MUTED) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export const RestChronometer = memo(function RestChronometer({
   initialSeconds = 60,
   autoStart = true,
@@ -201,8 +212,20 @@ export const RestChronometer = memo(function RestChronometer({
   const [totalSeconds, setTotalSeconds] = useState(initialSeconds);
   const [remaining, setRemaining] = useState(initialSeconds);
   const [isActive, setIsActive] = useState(autoStart);
-  const [isMuted, setIsMuted] = useState(false);
+  // Persiste o estado de silenciado durante todo o treino (armazenado em localStorage)
+  const [isMuted, setIsMuted] = useState(getStoredMutedState);
   const [isFinished, setIsFinished] = useState(false);
+
+  const toggleMute = useCallback(() => {
+    unlockAudioCtx();
+    setIsMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEY_REST_MUTED, String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // Monitora visibilidade na viewport para exibir a sticky bar flutuante
   useEffect(() => {
@@ -429,7 +452,7 @@ export const RestChronometer = memo(function RestChronometer({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsMuted((prev) => !prev)}
+            onClick={toggleMute}
             aria-label={isMuted ? "Ativar som do cronômetro" : "Silenciar cronômetro"}
           >
             {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -607,6 +630,8 @@ export const RestChronometer = memo(function RestChronometer({
         remainingSeconds={remaining}
         totalSeconds={safeTotal}
         isActive={isActive}
+        isMuted={isMuted}
+        onToggleMute={toggleMute}
         onAdd30s={() => addTime(30)}
         onTogglePlay={togglePlayPause}
         onSkip={() => {
@@ -635,6 +660,8 @@ export const StickyRestBar = memo(function StickyRestBar({
   remainingSeconds,
   totalSeconds,
   isActive,
+  isMuted = false,
+  onToggleMute,
   onAdd30s,
   onTogglePlay,
   onSkip,
@@ -643,6 +670,8 @@ export const StickyRestBar = memo(function StickyRestBar({
   remainingSeconds: number;
   totalSeconds: number;
   isActive: boolean;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
   onAdd30s: () => void;
   onTogglePlay: () => void;
   onSkip: () => void;
@@ -717,6 +746,19 @@ export const StickyRestBar = memo(function StickyRestBar({
         </button>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {onToggleMute && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onToggleMute}
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              aria-label={isMuted ? "Ativar som do cronômetro" : "Silenciar cronômetro"}
+            >
+              {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="ghost"

@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
 import { formatBrazilDate } from "@/lib/date";
 import { requireStudentContext } from "@/server/auth/session";
+import { StudentAvatarEditor } from "./student-avatar-editor";
 
 const GOAL_LABELS: Record<string, string> = {
   HYPERTROPHY: "Hipertrofia",
@@ -27,7 +28,7 @@ export default async function StudentProfilePage() {
         tenantId: ctx.tenantId,
       },
       include: {
-        user: { select: { name: true, email: true, createdAt: true } },
+        user: { select: { id: true, name: true, email: true, image: true, createdAt: true } },
       },
     }),
     prisma.tenant.findUniqueOrThrow({
@@ -46,19 +47,11 @@ export default async function StudentProfilePage() {
       </div>
 
       <section className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-border p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-secondary font-semibold text-sm text-primary">
-            {(student.user.name ?? student.user.email)
-              .substring(0, 2)
-              .toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-foreground">
-              {student.user.name ?? "Aluno"}
-            </h2>
-            <p className="truncate text-xs text-muted-foreground">{student.user.email}</p>
-          </div>
-        </div>
+        <StudentAvatarEditor
+          initialImage={student.user.image}
+          name={student.user.name}
+          email={student.user.email}
+        />
 
         <dl className="divide-y divide-border/70 px-4 text-xs">
           <div className="flex items-center justify-between py-3">

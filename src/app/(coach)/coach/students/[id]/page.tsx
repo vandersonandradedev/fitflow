@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, ChevronRight, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
 import { formatBrazilDate } from "@/lib/date";
 import { getStudentForTenant } from "@/modules/students/service";
 import { listProgramsForTenant } from "@/modules/workouts/service";
@@ -28,31 +27,56 @@ export default async function StudentDetailPage({
     studentProfileId: student.id,
   });
 
+  const studentInitials = (student.user.name ?? student.user.email ?? "A")
+    .substring(0, 2)
+    .toUpperCase();
+
   return (
     <div className="space-y-8">
-      <PageHeader
-        backHref="/coach/students"
-        backLabel="Voltar para Alunos"
-        title={student.user.name ?? "Aluno"}
-        description={`${student.user.email} · Cadastrado em ${formatBrazilDate(
-          student.createdAt
-        )}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/coach/progress?studentProfileId=${student.id}`}>
-              <Button variant="outline" size="sm">
-                Ver evolução
-              </Button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
+        <div className="flex items-center gap-4 min-w-0">
+          {student.user.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={student.user.image}
+              alt={student.user.name ?? "Aluno"}
+              className="h-14 w-14 rounded-full object-cover ring-2 ring-primary/40 shrink-0 shadow-md"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-base font-bold text-primary ring-2 ring-border">
+              {studentInitials}
+            </div>
+          )}
+          <div className="min-w-0 space-y-1">
+            <Link
+              href="/coach/students"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Voltar para Alunos
             </Link>
-            <Link href={`/coach/workouts?studentProfileId=${student.id}`}>
-              <Button size="sm">
-                <Plus className="h-4 w-4" />
-                Novo programa
-              </Button>
-            </Link>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl truncate">
+              {student.user.name ?? "Aluno"}
+            </h1>
+            <p className="max-w-2xl text-xs text-muted-foreground truncate">
+              {student.user.email} · Cadastrado em {formatBrazilDate(student.createdAt)}
+            </p>
           </div>
-        }
-      />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link href={`/coach/progress?studentProfileId=${student.id}`}>
+            <Button variant="outline" size="sm">
+              Ver evolução
+            </Button>
+          </Link>
+          <Link href={`/coach/workouts?studentProfileId=${student.id}`}>
+            <Button size="sm">
+              <Plus className="h-4 w-4" />
+              Novo programa
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Main Profile Form (2 cols) */}

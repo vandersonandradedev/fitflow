@@ -19,6 +19,7 @@ export interface TenantContext {
   readonly studentProfileId: string | null;
   readonly userName: string | null;
   readonly userEmail: string | null;
+  readonly userImage: string | null;
   readonly tenantName: string;
 }
 
@@ -35,6 +36,7 @@ export async function resolveTenantContext(userId: string, sessionVersion: numbe
     select: {
       name: true,
       email: true,
+      image: true,
       sessionVersion: true,
       memberships: {
         select: {
@@ -70,6 +72,7 @@ export async function resolveTenantContext(userId: string, sessionVersion: numbe
     studentProfileId,
     userName: user.name,
     userEmail: user.email,
+    userImage: user.image ?? null,
     tenantName: membership.tenant.name,
   }) as unknown as TenantContext;
 }

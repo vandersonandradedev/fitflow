@@ -51,4 +51,24 @@ describe("RestChronometer Component", () => {
     expect(onFinish).toHaveBeenCalled();
     expect(screen.getByText("VAI!")).toBeInTheDocument();
   });
+
+  it("persiste o estado de silenciado no localStorage ao alternar o som", () => {
+    localStorage.clear();
+    const { unmount } = render(<RestChronometer initialSeconds={60} autoStart={false} />);
+    const muteBtn = screen.getByLabelText("Silenciar cronômetro");
+    expect(muteBtn).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(muteBtn);
+    });
+
+    expect(localStorage.getItem("fitflow_rest_timer_muted")).toBe("true");
+    expect(screen.getByLabelText("Ativar som do cronômetro")).toBeInTheDocument();
+
+    unmount();
+
+    // Novo cronômetro montado (ex: próxima série do treino) deve iniciar silenciado
+    render(<RestChronometer initialSeconds={45} autoStart={false} />);
+    expect(screen.getByLabelText("Ativar som do cronômetro")).toBeInTheDocument();
+  });
 });
