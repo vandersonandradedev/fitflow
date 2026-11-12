@@ -119,6 +119,10 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
       return;
     }
 
+    // Captura os dados do formulário imediatamente antes de qualquer operação assíncrona
+    // No React, e.currentTarget se torna null após chamadas com await
+    const formData = new FormData(e.currentTarget);
+
     setUploadError(null);
     setUploadProgress("Solicitando upload seguro ao Cloudflare R2...");
 
@@ -166,13 +170,16 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
         effectiveContentType.startsWith("video/") ||
         /\.(mp4|mov|webm|m4v|ogv|3gp)$/i.test(filename);
 
-      const form = e.currentTarget;
-      const formData = new FormData(form);
       formData.set("url", res.data.publicUrl);
       formData.set("mediaType", isVideo ? "VIDEO" : "IMAGE");
 
       startTransition(async () => {
-        await createTenantMediaAction({} as ActionState, formData);
+        const actionResult = await createTenantMediaAction({} as ActionState, formData);
+        if (!actionResult.ok) {
+          setUploadError(actionResult.message || "Erro ao salvar mídia na galeria.");
+          setUploadProgress(null);
+          return;
+        }
         setUploadProgress(null);
         setUploadFile(null);
         setCreateDialogOpen(false);
