@@ -4,16 +4,6 @@ import { type TenantContext } from "@/server/auth/context";
 import { sendPushToUser } from "@/server/notifications/push";
 import { CreateNotificationInput, PushSubscriptionInput } from "./types";
 
-const JS_DOW_TO_ENUM = [
-  "SUNDAY",
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-] as const;
-
 /**
  * Salva ou atualiza uma inscrição de Web Push para o usuário logado.
  */

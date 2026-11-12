@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellRing, Check, Sparkles, X } from "lucide-react";
+import { Bell, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  savePushSubscriptionAction,
-  sendTestPushAction,
-} from "@/modules/notifications/push-actions";
+import { savePushSubscriptionAction } from "@/modules/notifications/push-actions";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -19,13 +16,12 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export function PushNotificationPrompt({ compact = false }: { compact?: boolean }) {
+export function PushNotificationPrompt() {
   const [supported, setSupported] = useState(false);
   const [_permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const [testStatus, setTestStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (
@@ -51,7 +47,6 @@ export function PushNotificationPrompt({ compact = false }: { compact?: boolean 
 
   const handleSubscribe = async () => {
     setLoading(true);
-    setTestStatus(null);
     try {
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidPublicKey) {
@@ -96,7 +91,6 @@ export function PushNotificationPrompt({ compact = false }: { compact?: boolean 
       }
 
       setIsSubscribed(true);
-      setTestStatus("Ativado! Um aviso de teste foi enviado para o seu aparelho.");
     } catch (error: unknown) {
       console.error("[PushNotificationPrompt]", error);
       alert(
@@ -109,52 +103,12 @@ export function PushNotificationPrompt({ compact = false }: { compact?: boolean 
     }
   };
 
-  const handleSendTest = async () => {
-    setLoading(true);
-    setTestStatus(null);
-    try {
-      const res = await sendTestPushAction();
-      if (res.error) {
-        setTestStatus(`Erro: ${res.error}`);
-      } else {
-        setTestStatus("Disparo enviado! Bloqueie a tela para testar o popup.");
-      }
-    } catch {
-      setTestStatus("Erro ao disparar teste.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!supported || dismissed) {
+  // Se não suportado, dispensado ou já estiver inscrito com sucesso, não ocupa espaço na tela
+  if (!supported || dismissed || isSubscribed) {
     return null;
   }
 
-  // Se já estiver inscrito e for modo compacto, exibe status sutil
-  if (isSubscribed) {
-    if (compact) return null;
-    return (
-      <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-        <div className="flex items-center gap-2">
-          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span>Notificações push em segundo plano ativas</span>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleSendTest}
-          disabled={loading}
-          className="h-7 text-[11px] gap-1 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/20"
-        >
-          <BellRing className="h-3 w-3" />
-          {loading ? "Enviando..." : "Testar popup"}
-        </Button>
-      </div>
-    );
-  }
-
-  // Card de ativação inicial
+  // Card de ativação inicial (aparece apenas quando ainda não estiver inscrito)
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-card p-4 shadow-lg">
       <button
@@ -182,10 +136,6 @@ export function PushNotificationPrompt({ compact = false }: { compact?: boolean 
             Seja avisado sobre novos treinos prescritos e lembretes diários mesmo com o celular bloqueado ou app fechado.
           </p>
 
-          {testStatus && (
-            <p className="text-xs text-primary pt-1 animate-pulse font-medium">{testStatus}</p>
-          )}
-
           <div className="pt-2">
             <Button
               type="button"
@@ -194,7 +144,7 @@ export function PushNotificationPrompt({ compact = false }: { compact?: boolean 
               disabled={loading}
               className="gap-1.5 h-8 text-xs font-semibold"
             >
-              <BellRing className="h-3.5 w-3.5" />
+              <Bell className="h-3.5 w-3.5" />
               {loading ? "Ativando..." : "Ativar Notificações no Celular"}
             </Button>
           </div>

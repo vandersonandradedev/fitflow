@@ -1,15 +1,14 @@
 import { prisma } from "@/lib/db";
+import { BRAZIL_TIMEZONE } from "@/lib/date";
 import { assertCoach, type TenantContext } from "@/server/auth/context";
 
 /**
  * Semana operacional (segunda a domingo) calculada no fuso do Brasil, pois o produto é voltado a
  * personais brasileiros. Quando existir fuso por tenant, esta função passa a recebê-lo.
  */
-const BUSINESS_TIMEZONE = "America/Sao_Paulo";
-
 export function startOfBusinessWeek(now: Date = new Date()): Date {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: BUSINESS_TIMEZONE,
+    timeZone: BRAZIL_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

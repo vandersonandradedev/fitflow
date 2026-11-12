@@ -4,6 +4,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatBrazilDate } from "@/lib/date";
 import { getStudentForTenant } from "@/modules/students/service";
 import { listProgramsForTenant } from "@/modules/workouts/service";
 import { NotFoundError } from "@/server/errors";
@@ -33,9 +34,9 @@ export default async function StudentDetailPage({
         backHref="/coach/students"
         backLabel="Voltar para Alunos"
         title={student.user.name ?? "Aluno"}
-        description={`${student.user.email} · Cadastrado em ${new Date(
+        description={`${student.user.email} · Cadastrado em ${formatBrazilDate(
           student.createdAt
-        ).toLocaleDateString("pt-BR")}`}
+        )}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/coach/progress?studentProfileId=${student.id}`}>

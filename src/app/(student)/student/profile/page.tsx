@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
+import { formatBrazilDate } from "@/lib/date";
 import { requireStudentContext } from "@/server/auth/session";
 
 const GOAL_LABELS: Record<string, string> = {
@@ -92,7 +93,7 @@ export default async function StudentProfilePage() {
             <div className="flex items-center justify-between py-3">
               <dt className="text-muted-foreground">Data de nascimento</dt>
               <dd className="font-mono tabular-nums text-foreground">
-                {new Date(student.birthDate).toLocaleDateString("pt-BR")}
+                {formatBrazilDate(student.birthDate)}
               </dd>
             </div>
           )}
@@ -100,7 +101,7 @@ export default async function StudentProfilePage() {
           <div className="flex items-center justify-between py-3">
             <dt className="text-muted-foreground">Data de início</dt>
             <dd className="font-mono tabular-nums text-foreground">
-              {new Date(student.createdAt).toLocaleDateString("pt-BR")}
+              {formatBrazilDate(student.createdAt)}
             </dd>
           </div>
         </dl>

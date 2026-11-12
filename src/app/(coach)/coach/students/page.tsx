@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, Search, X } from "lucide-react";
 import { listPendingInvitesForTenant, listStudentsForTenant } from "@/modules/students/service";
+import { formatBrazilDate } from "@/lib/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -77,7 +78,7 @@ export default async function CoachStudentsPage({
                   <span className="mx-2 text-brand-textMuted">·</span>
                   <span className="text-muted-foreground">{invite.email}</span>
                   <span className="ml-2 font-mono text-[11px] tabular-nums text-brand-textMuted">
-                    Expira {new Date(invite.expiresAt).toLocaleDateString("pt-BR")}
+                    Expira {formatBrazilDate(invite.expiresAt)}
                   </span>
                 </div>
                 <form action={revokeInviteAction} className="shrink-0 self-end sm:self-auto">

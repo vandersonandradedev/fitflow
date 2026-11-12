@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { formatBrazilDate } from "@/lib/date";
 import { assertCoach, isCoach, type TenantContext } from "@/server/auth/context";
 import { writeAudit } from "@/server/audit";
 import { NotFoundError, ValidationError } from "@/server/errors";
@@ -318,8 +319,12 @@ export async function getExerciseProgressionStats(
 
   for (const set of setLogs) {
     const sessionDate = set.exerciseLog.workoutSession.completedAt ?? set.loggedAt;
-    const dateKey = sessionDate.toISOString().slice(0, 10);
-    const dateFormatted = new Date(dateKey).toLocaleDateString("pt-BR", {
+    const dateKey = formatBrazilDate(sessionDate, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const dateFormatted = formatBrazilDate(sessionDate, {
       day: "2-digit",
       month: "2-digit",
     });
@@ -444,7 +449,7 @@ export async function getBodyCompositionProgression(
   });
 
   return assessments.map((a) => ({
-    date: new Date(a.assessmentDate).toLocaleDateString("pt-BR", {
+    date: formatBrazilDate(a.assessmentDate, {
       day: "2-digit",
       month: "2-digit",
       year: "2-digit",
