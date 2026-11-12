@@ -5,6 +5,7 @@ const STATIC_ASSETS = [
   "/favicon.ico",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/sounds/radar.wav",
 ];
 
 self.addEventListener("install", (event) => {
@@ -69,6 +70,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
     url.pathname.startsWith("/images/") ||
+    url.pathname.startsWith("/sounds/") ||
     url.pathname === "/favicon.ico" ||
     url.pathname === "/manifest.json";
 

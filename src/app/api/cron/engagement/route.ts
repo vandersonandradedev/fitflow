@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   dispatchChurnAlerts,
+  dispatchHabitReminders,
   dispatchMorningWorkoutReminders,
 } from "@/modules/notifications/service";
 
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
  * Endpoint de Engajamento e Lembretes executável via Cron (ex: Vercel Cron às 07:00 da manhã).
  * - Envia lembrete matinal para alunos que treinam hoje.
  * - Envia alerta de churn para personal trainers sobre alunos inativos há mais de 4 dias.
+ * - Envia lembretes de hábitos saudáveis (Água, Alimentação e Sono).
+ *
+ * Suporta filtro via query param: ?habit=water|nutrition|sleep|all|auto
  *
  * Protegido por chave secreta:
  * Authorization: Bearer <CRON_SECRET>
@@ -26,15 +30,26 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [reminders, churnAlerts] = await Promise.all([
+    const url = new URL(request.url);
+    const habitParam = (url.searchParams.get("habit")?.toUpperCase() as
+      | "AUTO"
+      | "WATER"
+      | "NUTRITION"
+      | "SLEEP"
+      | "ALL"
+      | null) ?? "AUTO";
+
+    const [reminders, churnAlerts, habits] = await Promise.all([
       dispatchMorningWorkoutReminders(),
       dispatchChurnAlerts(),
+      dispatchHabitReminders(habitParam),
     ]);
 
     return NextResponse.json({
       ok: true,
       reminders,
       churnAlerts,
+      habits,
     });
   } catch (error) {
     console.error("[CRON_ENGAGEMENT_ERROR]", error);

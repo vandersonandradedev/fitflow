@@ -302,3 +302,196 @@ export async function notifyCoachOnSessionFinish(params: {
     }
   }
 }
+
+/**
+ * Dispara lembretes de hidratação (água) para alunos ativos.
+ * Evita repetição nas últimas 4 horas.
+ */
+export async function dispatchWaterReminders() {
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const activeStudents = await prisma.studentProfile.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      tenantId: true,
+      userId: true,
+      user: { select: { name: true } },
+    },
+  });
+
+  let dispatchedCount = 0;
+
+  for (const student of activeStudents) {
+    const firstName = student.user.name?.split(" ")[0] || "Aluno";
+    const title = "Hora de Hidratar! 💧";
+    const message = `Olá, ${firstName}! Beba um copo de água agora (300ml a 500ml) para manter seu rendimento muscular e acelerar sua recuperação.`;
+
+    const alreadySent = await prisma.notification.findFirst({
+      where: {
+        tenantId: student.tenantId,
+        userId: student.userId,
+        title: { startsWith: "Hora de Hidratar!" },
+        createdAt: { gte: fourHoursAgo },
+      },
+    });
+
+    if (!alreadySent) {
+      await createNotification(student.tenantId, {
+        userId: student.userId,
+        title,
+        message,
+        type: "SYSTEM",
+        link: "/student/today",
+      });
+      dispatchedCount++;
+    }
+  }
+
+  return { dispatchedCount };
+}
+
+/**
+ * Dispara lembretes de nutrição e alimentação para alunos ativos.
+ * Evita repetição no mesmo dia.
+ */
+export async function dispatchNutritionReminders() {
+  const todayStart = getStartOfBrazilDay();
+  const activeStudents = await prisma.studentProfile.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      tenantId: true,
+      userId: true,
+      user: { select: { name: true } },
+    },
+  });
+
+  let dispatchedCount = 0;
+
+  for (const student of activeStudents) {
+    const firstName = student.user.name?.split(" ")[0] || "Aluno";
+    const title = "Combustível do Corpo! 🥗";
+    const message = `Olá, ${firstName}! Lembre-se de fazer uma refeição equilibrada e priorizar proteínas para alimentar seus músculos e recuperar as energias.`;
+
+    const alreadySent = await prisma.notification.findFirst({
+      where: {
+        tenantId: student.tenantId,
+        userId: student.userId,
+        title: { startsWith: "Combustível do Corpo!" },
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    if (!alreadySent) {
+      await createNotification(student.tenantId, {
+        userId: student.userId,
+        title,
+        message,
+        type: "SYSTEM",
+        link: "/student/today",
+      });
+      dispatchedCount++;
+    }
+  }
+
+  return { dispatchedCount };
+}
+
+/**
+ * Dispara lembretes noturnos de higiene do sono e descanso para alunos ativos.
+ * Evita repetição no mesmo dia.
+ */
+export async function dispatchSleepReminders() {
+  const todayStart = getStartOfBrazilDay();
+  const activeStudents = await prisma.studentProfile.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      tenantId: true,
+      userId: true,
+      user: { select: { name: true } },
+    },
+  });
+
+  let dispatchedCount = 0;
+
+  for (const student of activeStudents) {
+    const firstName = student.user.name?.split(" ")[0] || "Aluno";
+    const title = "Recuperação e Sono Reparador 🌙";
+    const message = `Boa noite, ${firstName}! Hora de desacelerar das telas. O descanso de qualidade (7 a 8 horas) é onde seu corpo reconstrói fibras musculares e renova sua saúde.`;
+
+    const alreadySent = await prisma.notification.findFirst({
+      where: {
+        tenantId: student.tenantId,
+        userId: student.userId,
+        title: { startsWith: "Recuperação e Sono Reparador" },
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    if (!alreadySent) {
+      await createNotification(student.tenantId, {
+        userId: student.userId,
+        title,
+        message,
+        type: "SYSTEM",
+        link: "/student/today",
+      });
+      dispatchedCount++;
+    }
+  }
+
+  return { dispatchedCount };
+}
+
+/**
+ * Orquestrador de lembretes de hábitos saudáveis (Água, Nutrição, Sono).
+ */
+export async function dispatchHabitReminders(
+  mode: "AUTO" | "WATER" | "NUTRITION" | "SLEEP" | "ALL" = "AUTO"
+) {
+  if (mode === "WATER") {
+    return dispatchWaterReminders();
+  }
+  if (mode === "NUTRITION") {
+    return dispatchNutritionReminders();
+  }
+  if (mode === "SLEEP") {
+    return dispatchSleepReminders();
+  }
+  if (mode === "ALL") {
+    const [water, nutrition, sleep] = await Promise.all([
+      dispatchWaterReminders(),
+      dispatchNutritionReminders(),
+      dispatchSleepReminders(),
+    ]);
+    return {
+      waterDispatched: water.dispatchedCount,
+      nutritionDispatched: nutrition.dispatchedCount,
+      sleepDispatched: sleep.dispatchedCount,
+    };
+  }
+
+  // Modo AUTO: determina o lembrete adequado pelo fuso horário de Brasília
+  const now = new Date();
+  const brazilHour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(now)
+  );
+
+  if (brazilHour >= 21) {
+    return dispatchSleepReminders();
+  } else if (brazilHour >= 11 && brazilHour <= 14) {
+    const [nutr, wat] = await Promise.all([
+      dispatchNutritionReminders(),
+      dispatchWaterReminders(),
+    ]);
+    return {
+      nutritionDispatched: nutr.dispatchedCount,
+      waterDispatched: wat.dispatchedCount,
+    };
+  } else {
+    // Manhã / Tarde: hidratação
+    return dispatchWaterReminders();
+  }
+}

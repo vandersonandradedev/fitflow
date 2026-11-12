@@ -26,7 +26,7 @@ export interface RestChronometerProps {
   className?: string;
 }
 
-// Síntese de áudio para avisos de contagem e término sem dependência de arquivos externos
+// Síntese de áudio para avisos de contagem nos últimos segundos
 function playTone(freq: number, duration = 0.15, gainLevel = 0.2) {
   try {
     const AudioCtx =
@@ -51,12 +51,96 @@ function playTone(freq: number, duration = 0.15, gainLevel = 0.2) {
   } catch {}
 }
 
-function playCompletionChime() {
+/**
+ * Nota percussiva de marimba com harmônico metálico (estilo alarme/timer Radar do iPhone).
+ */
+function playRadarStrike(
+  ctx: AudioContext,
+  freq: number,
+  startTime: number,
+  duration = 0.08,
+  volume = 0.35
+) {
   try {
-    // Tríade ascendente revigorante (C5 -> E5 -> G5)
-    setTimeout(() => playTone(523.25, 0.2, 0.25), 0);
-    setTimeout(() => playTone(659.25, 0.2, 0.25), 120);
-    setTimeout(() => playTone(783.99, 0.4, 0.3), 240);
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(freq, startTime);
+
+    // Harmônico característico de barra percussiva (2.756x)
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(freq * 2.756, startTime);
+
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.linearRampToValueAtTime(volume, startTime + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(startTime);
+    osc2.start(startTime);
+    osc1.stop(startTime + duration);
+    osc2.stop(startTime + duration);
+  } catch {}
+}
+
+/**
+ * Toca o toque padrão "Radar" do iPhone ao término do descanso
+ * Combina arquivo estático com síntese Web Audio API de latência zero para funcionamento 100% offline.
+ */
+function playIPhoneRadarChime() {
+  try {
+    const audio = new Audio("/sounds/radar.wav");
+    audio.volume = 0.75;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Fallback imediato se autoplay de elemento de áudio for barrado
+        synthesizeRadarChime();
+      });
+      return;
+    }
+  } catch {
+    synthesizeRadarChime();
+  }
+}
+
+function synthesizeRadarChime() {
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    const HIGH_NOTE = 1244.5; // D#6
+    const LOW_NOTE = 932.3;   // A#5
+
+    const playBurst = (offset: number) => {
+      playRadarStrike(ctx, HIGH_NOTE, now + offset, 0.08, 0.38);
+      playRadarStrike(ctx, LOW_NOTE, now + offset + 0.07, 0.09, 0.34);
+    };
+
+    // Ciclo 1: 4 rajadas duplas características do iPhone Radar
+    playBurst(0.0);
+    playBurst(0.26);
+    playBurst(0.52);
+    playBurst(0.78);
+
+    // Ciclo 2 após breve pausa (eco autêntico do iPhone)
+    playBurst(1.25);
+    playBurst(1.51);
+    playBurst(1.77);
+    playBurst(2.03);
   } catch {}
 }
 
@@ -144,9 +228,9 @@ export const RestChronometer = memo(function RestChronometer({
         setIsActive(false);
         setIsFinished(true);
         if (!isMuted) {
-          playCompletionChime();
+          playIPhoneRadarChime();
         }
-        triggerHaptic([200, 100, 250]);
+        triggerHaptic([60, 40, 60, 140, 60, 40, 60, 140, 60, 40, 60]);
         if (onFinish) {
           onFinish();
         }
