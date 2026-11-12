@@ -26,33 +26,69 @@ export interface RestChronometerProps {
   className?: string;
 }
 
+// ---- AudioContext singleton (evita criar múltiplos contextos) ---------------
+// Browsers limitam o nº de AudioContext simultâneos; reutilizar um único
+// contexto previne falhas silenciosas, especialmente em mobile/Safari.
+let _sharedAudioCtx: AudioContext | null = null;
+
+function getOrCreateAudioCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    if (_sharedAudioCtx && _sharedAudioCtx.state !== "closed") return _sharedAudioCtx;
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    _sharedAudioCtx = new Ctor();
+    return _sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deve ser chamado em todo gesto do usuário (clique em Play, +30s, etc.) para
+ * desbloquear o AudioContext no iOS/Safari antes do alarme disparar.
+ */
+function unlockAudioCtx() {
+  const ctx = getOrCreateAudioCtx();
+  if (ctx && ctx.state !== "running") {
+    ctx.resume().catch(() => {});
+  }
+}
+
+/** Retorna o AudioContext já retomado (aguarda o resume se estiver suspended). */
+function resumedCtx(): Promise<AudioContext | null> {
+  return new Promise((resolve) => {
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) { resolve(null); return; }
+    if (ctx.state === "running") { resolve(ctx); return; }
+    ctx.resume().then(() => resolve(ctx)).catch(() => resolve(null));
+  });
+}
+
 // Síntese de áudio para avisos de contagem nos últimos segundos
 function playTone(freq: number, duration = 0.15, gainLevel = 0.2) {
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(gainLevel, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + duration);
-  } catch {}
+  resumedCtx().then((ctx) => {
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(gainLevel, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {}
+  });
 }
 
 /**
  * Nota percussiva de marimba com harmônico metálico (estilo alarme/timer Radar do iPhone).
+ * Recebe o ctx já resumido para garantir que o startTime seja válido.
  */
 function playRadarStrike(
   ctx: AudioContext,
@@ -88,9 +124,38 @@ function playRadarStrike(
   } catch {}
 }
 
+function synthesizeRadarChime() {
+  // Aguarda o ctx estar running antes de agendar sons — corrige falha no iOS/Safari
+  resumedCtx().then((ctx) => {
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const HIGH_NOTE = 1244.5; // D#6
+      const LOW_NOTE = 932.3;   // A#5
+
+      const playBurst = (offset: number) => {
+        playRadarStrike(ctx, HIGH_NOTE, now + offset, 0.08, 0.38);
+        playRadarStrike(ctx, LOW_NOTE, now + offset + 0.07, 0.09, 0.34);
+      };
+
+      // Ciclo 1: 4 rajadas duplas características do iPhone Radar
+      playBurst(0.0);
+      playBurst(0.26);
+      playBurst(0.52);
+      playBurst(0.78);
+
+      // Ciclo 2 após breve pausa (eco autêntico do iPhone)
+      playBurst(1.25);
+      playBurst(1.51);
+      playBurst(1.77);
+      playBurst(2.03);
+    } catch {}
+  });
+}
+
 /**
- * Toca o toque padrão "Radar" do iPhone ao término do descanso
- * Combina arquivo estático com síntese Web Audio API de latência zero para funcionamento 100% offline.
+ * Toca o toque padrão "Radar" do iPhone ao término do descanso.
+ * Tenta o arquivo .wav primeiro; fallback para síntese Web Audio.
  */
 function playIPhoneRadarChime() {
   try {
@@ -107,41 +172,6 @@ function playIPhoneRadarChime() {
   } catch {
     synthesizeRadarChime();
   }
-}
-
-function synthesizeRadarChime() {
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
-    }
-
-    const now = ctx.currentTime;
-    const HIGH_NOTE = 1244.5; // D#6
-    const LOW_NOTE = 932.3;   // A#5
-
-    const playBurst = (offset: number) => {
-      playRadarStrike(ctx, HIGH_NOTE, now + offset, 0.08, 0.38);
-      playRadarStrike(ctx, LOW_NOTE, now + offset + 0.07, 0.09, 0.34);
-    };
-
-    // Ciclo 1: 4 rajadas duplas características do iPhone Radar
-    playBurst(0.0);
-    playBurst(0.26);
-    playBurst(0.52);
-    playBurst(0.78);
-
-    // Ciclo 2 após breve pausa (eco autêntico do iPhone)
-    playBurst(1.25);
-    playBurst(1.51);
-    playBurst(1.77);
-    playBurst(2.03);
-  } catch {}
 }
 
 function triggerHaptic(pattern: number[] = [150, 70, 150]) {
@@ -242,6 +272,7 @@ export const RestChronometer = memo(function RestChronometer({
 
   // Controles rápidos
   const togglePlayPause = useCallback(() => {
+    unlockAudioCtx(); // desbloqueia AudioContext no iOS no gesto do usuário
     if (isFinished) {
       // Reiniciar
       const nextTotal = totalSeconds || 60;
@@ -262,6 +293,7 @@ export const RestChronometer = memo(function RestChronometer({
   }, [isActive, isFinished, remaining, totalSeconds]);
 
   const addTime = useCallback((deltaSec: number) => {
+    unlockAudioCtx();
     targetEndRef.current += deltaSec * 1000;
     setTotalSeconds((prev) => Math.max(prev + deltaSec, prev));
     setRemaining((prev) => Math.max(0, prev + deltaSec));
@@ -286,6 +318,7 @@ export const RestChronometer = memo(function RestChronometer({
   }, [onFinish]);
 
   const resetToPreset = useCallback((presetSec: number) => {
+    unlockAudioCtx();
     setTotalSeconds(presetSec);
     setRemaining(presetSec);
     setIsFinished(false);
