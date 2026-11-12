@@ -275,14 +275,14 @@ export async function finishWorkoutSession(
     }
   }
 
-  let pushPayload: {
-    userId: string;
-    title: string;
-    message: string;
-    link: string;
-  } | null = null;
+  const { updatedSession, pushPayload } = await prisma.$transaction(async (tx) => {
+    let push: {
+      userId: string;
+      title: string;
+      message: string;
+      link: string;
+    } | null = null;
 
-  const result = await prisma.$transaction(async (tx) => {
     // Remove logs preliminares da sessão para substituir pelo estado real executado
     await tx.exerciseLog.deleteMany({
       where: { workoutSessionId: session.id },
@@ -382,7 +382,7 @@ export async function finishWorkoutSession(
         },
       });
 
-      pushPayload = {
+      push = {
         userId: coachMember.userId,
         title,
         message: notificationMessage,
@@ -402,7 +402,7 @@ export async function finishWorkoutSession(
       },
     });
 
-    return updatedSession;
+    return { updatedSession, pushPayload: push };
   });
 
   // Dispara notificação push em segundo plano para o personal trainer
@@ -416,7 +416,7 @@ export async function finishWorkoutSession(
     });
   }
 
-  return result;
+  return updatedSession;
 }
 
 /**

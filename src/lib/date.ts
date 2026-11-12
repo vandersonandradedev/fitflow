@@ -92,6 +92,48 @@ export function formatBrazilTime(
 }
 
 /**
+ * Ordem cronológica da semana (Segunda a Domingo, seguido de Livre/Rotativo).
+ */
+export const DOW_SORT_ORDER: Record<string, number> = {
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+  SUNDAY: 7,
+  ANY: 8,
+};
+
+/**
+ * Ordena dias de treino cronologicamente pela semana (Segunda a Domingo).
+ */
+export function sortDaysByWeekOrder<T extends { dayOfWeek: string; orderIndex?: number }>(
+  days: T[]
+): T[] {
+  return [...days].sort((a, b) => {
+    const orderA = DOW_SORT_ORDER[a.dayOfWeek] ?? 99;
+    const orderB = DOW_SORT_ORDER[b.dayOfWeek] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+  });
+}
+
+/**
+ * Retorna o cabeçalho completo formatado em português (ex: "Quarta-feira, 11 de novembro").
+ */
+export function formatBrazilTodayHeader(date: Date = new Date()): string {
+  const formatted = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: BRAZIL_TIMEZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(date);
+
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+/**
  * Retorna o início do dia (00:00:00.000) no fuso de Brasília, como objeto Date em UTC.
  */
 export function getStartOfBrazilDay(date: Date | string | number = new Date()): Date {

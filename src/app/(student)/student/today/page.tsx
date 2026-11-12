@@ -8,7 +8,12 @@ import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { SafeImage } from "@/components/ui/safe-image";
 import { prisma } from "@/lib/db";
-import { getBrazilDayOfWeek } from "@/lib/date";
+import { formatBrazilTodayHeader, getBrazilDayOfWeek, sortDaysByWeekOrder } from "@/lib/date";
+import {
+  DAY_OF_WEEK_LABELS,
+  DAY_OF_WEEK_SHORT,
+  type DayOfWeekInput,
+} from "@/modules/workouts/types";
 import { requireStudentContext } from "@/server/auth/session";
 import { startSessionAction } from "../session/actions";
 
@@ -111,34 +116,84 @@ export default async function StudentTodayPage({
     }),
   ]);
 
-  const activeProgram =
-    (params.programId
-      ? activePrograms.find((p) => p.id === params.programId)
-      : undefined) ?? activePrograms[0];
+  const todayDow = getBrazilDayOfWeek();
+
+  // 1. Prioriza o programa passado na URL
+  let activeProgram = params.programId
+    ? activePrograms.find((p) => p.id === params.programId)
+    : undefined;
+
+  // 2. Se há sessão em andamento, prioriza o programa da sessão
+  if (!activeProgram && inProgressSession) {
+    activeProgram = activePrograms.find((p) =>
+      p.versions.some((v) =>
+        v.trainingDays.some((d) => d.id === inProgressSession.trainingDayId)
+      )
+    );
+  }
+
+  // 3. Sincronização inteligente: prioriza o programa que tem treino agendado para HOJE
+  if (!activeProgram) {
+    activeProgram = activePrograms.find((p) =>
+      p.versions[0]?.trainingDays.some((d) => d.dayOfWeek === todayDow)
+    );
+  }
+
+  // 4. Se nenhum tem treino hoje, procura algum com dia livre (ANY)
+  if (!activeProgram) {
+    activeProgram = activePrograms.find((p) =>
+      p.versions[0]?.trainingDays.some((d) => d.dayOfWeek === "ANY")
+    );
+  }
+
+  // 5. Fallback: primeiro programa ativo
+  if (!activeProgram) {
+    activeProgram = activePrograms[0];
+  }
 
   const publishedVersion = activeProgram?.versions[0];
-  const todayDow = getBrazilDayOfWeek();
+  const sortedTrainingDays = publishedVersion
+    ? sortDaysByWeekOrder(publishedVersion.trainingDays)
+    : [];
+
   const trainingDay =
     (params.dayId
-      ? publishedVersion?.trainingDays.find((d) => d.id === params.dayId)
+      ? sortedTrainingDays.find((d) => d.id === params.dayId)
       : undefined) ??
-    (inProgressSession
-      ? publishedVersion?.trainingDays.find((d) => d.id === inProgressSession.trainingDayId)
+    (inProgressSession && sortedTrainingDays.some((d) => d.id === inProgressSession.trainingDayId)
+      ? sortedTrainingDays.find((d) => d.id === inProgressSession.trainingDayId)
       : undefined) ??
-    publishedVersion?.trainingDays.find((d) => d.dayOfWeek === todayDow) ??
-    publishedVersion?.trainingDays[0];
+    sortedTrainingDays.find((d) => d.dayOfWeek === todayDow) ??
+    sortedTrainingDays.find((d) => d.dayOfWeek === "ANY") ??
+    sortedTrainingDays[0];
 
   const totalDaySets = trainingDay
     ? trainingDay.workoutExercises.reduce((acc, w) => acc + w.sets.length, 0)
     : 0;
 
+  const isTodayDay = Boolean(
+    trainingDay && (trainingDay.dayOfWeek === todayDow || trainingDay.dayOfWeek === "ANY")
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-muted-foreground">Olá, {studentUser.name ?? "Aluno"}</p>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Treino de Hoje
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-primary">
+              {formatBrazilTodayHeader()}
+            </span>
+            <span className="text-xs text-muted-foreground">· Olá, {studentUser.name?.split(" ")[0] ?? "Aluno"}</span>
+            {isTodayDay && (
+              <Badge variant="emerald" className="text-[10px] py-0 px-1.5 h-4">
+                Hoje
+              </Badge>
+            )}
+          </div>
+          <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground">
+            {isTodayDay
+              ? "Treino de Hoje"
+              : `Rotina de ${DAY_OF_WEEK_LABELS[trainingDay?.dayOfWeek as DayOfWeekInput] ?? trainingDay?.name}`}
           </h1>
         </div>
         <OfflineSyncBadge />
@@ -246,22 +301,35 @@ export default async function StudentTodayPage({
             )}
           </section>
 
-          {/* Day Switcher (Sharp tabs, touch-friendly) */}
-          {publishedVersion.trainingDays.length > 1 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {publishedVersion.trainingDays.map((d) => {
+          {/* Day Switcher (Cronológico com indicador HOJE) */}
+          {sortedTrainingDays.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {sortedTrainingDays.map((d) => {
                 const active = d.id === trainingDay.id;
+                const isToday = d.dayOfWeek === todayDow;
+                const shortLabel =
+                  DAY_OF_WEEK_SHORT[d.dayOfWeek as DayOfWeekInput] ?? d.dayOfWeek;
                 return (
                   <Link
                     key={d.id}
                     href={`/student/today?programId=${activeProgram.id}&dayId=${d.id}`}
-                    className={`shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors min-h-[38px] inline-flex items-center ${
+                    className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-medium transition-all min-h-[42px] flex items-center gap-2 ${
                       active
-                        ? "border-primary/40 bg-secondary text-foreground"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground"
+                        ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                   >
-                    {d.name}
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider">
+                      {shortLabel}
+                    </span>
+                    <span className="truncate max-w-[130px] sm:max-w-[200px]">
+                      {d.name}
+                    </span>
+                    {isToday && (
+                      <span className="rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground uppercase tracking-wide shrink-0">
+                        Hoje
+                      </span>
+                    )}
                   </Link>
                 );
               })}

@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { prisma } from "@/lib/db";
+import { getBrazilDayOfWeek, sortDaysByWeekOrder } from "@/lib/date";
 import {
   DAY_OF_WEEK_LABELS,
   DAY_OF_WEEK_SHORT,
@@ -45,12 +46,21 @@ export default async function StudentWeeklySchedulePage({
     orderBy: { createdAt: "desc" },
   });
 
+  const todayDow = getBrazilDayOfWeek();
+
   const activeProgram =
     (params.programId
       ? activePrograms.find((p) => p.id === params.programId)
-      : undefined) ?? activePrograms[0];
+      : undefined) ??
+    activePrograms.find((p) =>
+      p.versions[0]?.trainingDays.some((d) => d.dayOfWeek === todayDow)
+    ) ??
+    activePrograms[0];
 
   const publishedVersion = activeProgram?.versions[0];
+  const sortedTrainingDays = publishedVersion
+    ? sortDaysByWeekOrder(publishedVersion.trainingDays)
+    : [];
 
   return (
     <div className="space-y-5">
@@ -109,7 +119,8 @@ export default async function StudentWeeklySchedulePage({
           </section>
 
           <ul className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
-            {publishedVersion.trainingDays.map((day, index) => {
+            {sortedTrainingDays.map((day, index) => {
+              const isToday = day.dayOfWeek === todayDow;
               const totalSets = day.workoutExercises.reduce(
                 (acc, wex) => acc + wex.sets.length,
                 0
@@ -119,18 +130,35 @@ export default async function StudentWeeklySchedulePage({
                 <li key={day.id}>
                   <Link
                     href={`/student/today?programId=${activeProgram.id}&dayId=${day.id}`}
-                    className="flex min-h-[64px] items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/40"
+                    className={`flex min-h-[64px] items-center justify-between gap-3 px-4 py-3.5 transition-colors ${
+                      isToday
+                        ? "bg-emerald-500/[0.08] border-l-4 border-l-primary hover:bg-emerald-500/[0.12]"
+                        : "hover:bg-secondary/40"
+                    }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-10 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-background font-mono text-xs font-semibold text-primary">
+                      <div
+                        className={`flex h-10 w-11 shrink-0 items-center justify-center rounded-md border font-mono text-xs font-semibold ${
+                          isToday
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-primary"
+                        }`}
+                      >
                         {DAY_OF_WEEK_SHORT[day.dayOfWeek as DayOfWeekInput] ??
                           `D${index + 1}`}
                       </div>
 
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {day.name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {day.name}
+                          </p>
+                          {isToday && (
+                            <Badge variant="emerald" className="text-[10px] py-0 px-1.5 h-4">
+                              Hoje
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {DAY_OF_WEEK_LABELS[day.dayOfWeek as DayOfWeekInput] ??
                             day.dayOfWeek}{" "}
