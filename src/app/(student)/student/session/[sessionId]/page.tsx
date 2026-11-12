@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import {
   getLastPerformanceForExercises,
   getSessionDetails,
@@ -16,16 +15,10 @@ export default async function StudentSessionPage({
   const ctx = await requireStudentContext();
   const { sessionId } = await params;
 
-  const [session, studentUser] = await Promise.all([
-    getSessionDetails(ctx, sessionId).catch((err) => {
-      if (err instanceof NotFoundError) notFound();
-      throw err;
-    }),
-    prisma.user.findUnique({
-      where: { id: ctx.userId },
-      select: { name: true },
-    }),
-  ]);
+  const session = await getSessionDetails(ctx, sessionId).catch((err) => {
+    if (err instanceof NotFoundError) notFound();
+    throw err;
+  });
 
   // Se a sessão já estiver concluída, redireciona para o histórico
   if (session.status === "COMPLETED") {
@@ -74,7 +67,7 @@ export default async function StudentSessionPage({
       startedAtIso={session.startedAt.toISOString()}
       initialExercises={runnerExercises}
       lastPerformanceMap={lastPerformanceMap}
-      studentName={studentUser?.name ?? "Aluno"}
+      studentName={ctx.userName ?? "Aluno"}
     />
   );
 }

@@ -1,5 +1,4 @@
 import { logoutAction } from "@/app/(auth)/actions";
-import { prisma } from "@/lib/db";
 import { requireCoachContext } from "@/server/auth/session";
 import { CoachShell } from "./coach-shell";
 
@@ -9,18 +8,13 @@ export default async function CoachLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireCoachContext();
-
-  const [tenant, coach] = await Promise.all([
-    prisma.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId }, select: { name: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { name: true, email: true } }),
-  ]);
-
-  const initials = (coach.name ?? coach.email).substring(0, 2).toUpperCase();
+  const coachLabel = ctx.userName ?? ctx.userEmail ?? "Treinador";
+  const initials = coachLabel.substring(0, 2).toUpperCase();
 
   return (
     <CoachShell
-      tenantName={tenant.name}
-      coachLabel={coach.name ?? coach.email}
+      tenantName={ctx.tenantName}
+      coachLabel={coachLabel}
       initials={initials}
       logoutAction={logoutAction}
     >

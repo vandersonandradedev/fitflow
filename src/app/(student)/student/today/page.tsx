@@ -25,11 +25,7 @@ export default async function StudentTodayPage({
   const ctx = await requireStudentContext();
   const params = await searchParams;
 
-  const [studentUser, activePrograms, inProgressSession] = await Promise.all([
-    prisma.user.findUniqueOrThrow({
-      where: { id: ctx.userId },
-      select: { name: true },
-    }),
+  const [activePrograms, inProgressSession] = await Promise.all([
     prisma.trainingProgram.findMany({
       where: {
         tenantId: ctx.tenantId,
@@ -183,7 +179,7 @@ export default async function StudentTodayPage({
             <span className="text-xs font-semibold text-primary">
               {formatBrazilTodayHeader()}
             </span>
-            <span className="text-xs text-muted-foreground">· Olá, {studentUser.name?.split(" ")[0] ?? "Aluno"}</span>
+            <span className="text-xs text-muted-foreground">· Olá, {ctx.userName?.split(" ")[0] ?? "Aluno"}</span>
             {isTodayDay && (
               <Badge variant="emerald" className="text-[10px] py-0 px-1.5 h-4">
                 Hoje

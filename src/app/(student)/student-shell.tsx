@@ -54,6 +54,7 @@ export function StudentShell({
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  prefetch={true}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150",
                     active
@@ -106,6 +107,7 @@ export function StudentShell({
               <Link
                 key={tab.href}
                 href={tab.href}
+                prefetch={true}
                 className={cn(
                   "relative flex h-full flex-col items-center justify-center transition-all duration-150 touch-manipulation select-none active:scale-90",
                   active ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground active:text-foreground"

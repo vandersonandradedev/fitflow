@@ -17,6 +17,9 @@ export interface TenantContext {
   readonly role: TenantRole;
   /** Presente somente quando role === "STUDENT". */
   readonly studentProfileId: string | null;
+  readonly userName: string | null;
+  readonly userEmail: string | null;
+  readonly tenantName: string;
 }
 
 /**
@@ -30,12 +33,14 @@ export async function resolveTenantContext(userId: string, sessionVersion: numbe
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      name: true,
+      email: true,
       sessionVersion: true,
       memberships: {
         select: {
           tenantId: true,
           role: true,
-          tenant: { select: { status: true } },
+          tenant: { select: { status: true, name: true } },
         },
         take: 1,
       },
@@ -63,6 +68,9 @@ export async function resolveTenantContext(userId: string, sessionVersion: numbe
     tenantId: membership.tenantId,
     role: membership.role,
     studentProfileId,
+    userName: user.name,
+    userEmail: user.email,
+    tenantName: membership.tenant.name,
   }) as unknown as TenantContext;
 }
 
