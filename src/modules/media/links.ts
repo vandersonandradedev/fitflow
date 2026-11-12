@@ -88,8 +88,18 @@ export function parseMediaUrl(url: string): ParsedMedia {
   }
 
   // 3. Cloudflare R2 / S3
-  if (lower.includes(".r2.cloudflarestorage.com") || lower.includes("media.fitflow.app")) {
-    const isVideo = lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov");
+  if (
+    lower.includes(".r2.cloudflarestorage.com") ||
+    lower.includes(".r2.dev") ||
+    lower.includes("media.fitflow.app")
+  ) {
+    const isVideo =
+      lower.endsWith(".mp4") ||
+      lower.endsWith(".webm") ||
+      lower.endsWith(".mov") ||
+      lower.endsWith(".m4v") ||
+      lower.endsWith(".ogv") ||
+      lower.endsWith(".3gp");
     return {
       originalUrl: trimmed,
       provider: "R2",

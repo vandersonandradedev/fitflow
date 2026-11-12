@@ -6,8 +6,15 @@ const ALLOWED_CONTENT_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
   "video/mp4",
   "video/webm",
+  "video/quicktime",
+  "video/x-m4v",
+  "video/ogg",
+  "video/3gpp",
 ] as const;
 
 export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
@@ -16,16 +23,34 @@ const EXTENSION_MAP: Record<AllowedContentType, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/gif": "gif",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "video/mp4": "mp4",
   "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/x-m4v": "m4v",
+  "video/ogg": "ogv",
+  "video/3gpp": "3gp",
 };
+
+/**
+ * Normaliza o Account ID caso o usuário tenha colado a URL completa do dashboard.
+ */
+function cleanAccountId(rawId?: string): string | null {
+  if (!rawId) return null;
+  const trimmed = rawId.trim();
+  const match = trimmed.match(/dash\.cloudflare\.com\/([a-f0-9]+)/i);
+  if (match) return match[1];
+  return trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+}
 
 /**
  * Cria o cliente S3 apontando para o Cloudflare R2.
  * O Cloudflare R2 tem taxa de EGRESS ZERO (transferência de dados de saída gratuita).
  */
 function getR2Client(): S3Client | null {
-  const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+  const accountId = cleanAccountId(process.env.CLOUDFLARE_R2_ACCOUNT_ID);
   const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
 
@@ -69,14 +94,15 @@ export async function generatePresignedUploadUrl({
 }: PresignedUploadOptions): Promise<PresignedUploadResult> {
   if (!ALLOWED_CONTENT_TYPES.includes(contentType as AllowedContentType)) {
     throw new ValidationError(
-      `Tipo de arquivo não permitido: ${contentType}. Use JPEG, PNG, WebP, MP4 ou WebM.`
+      `Tipo de arquivo não permitido: ${contentType}. Use vídeos MP4, WebM, MOV ou imagens JPEG, PNG, WebP.`
     );
   }
 
   const s3 = getR2Client();
   const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME || "fitflow-media";
-  const publicBaseUrl =
+  const rawBaseUrl =
     process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://media.fitflow.app";
+  const publicBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 
   const ext = EXTENSION_MAP[contentType as AllowedContentType] || "bin";
   const fileId = crypto.randomUUID();

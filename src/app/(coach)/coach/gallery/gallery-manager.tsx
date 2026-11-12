@@ -123,36 +123,53 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
     setUploadProgress("Solicitando upload seguro ao Cloudflare R2...");
 
     try {
+      const filename = uploadFile.name.toLowerCase();
+      let effectiveContentType = uploadFile.type;
+      if (!effectiveContentType) {
+        if (filename.endsWith(".mp4")) effectiveContentType = "video/mp4";
+        else if (filename.endsWith(".mov")) effectiveContentType = "video/quicktime";
+        else if (filename.endsWith(".webm")) effectiveContentType = "video/webm";
+        else if (filename.endsWith(".m4v")) effectiveContentType = "video/x-m4v";
+        else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) effectiveContentType = "image/jpeg";
+        else if (filename.endsWith(".png")) effectiveContentType = "image/png";
+        else if (filename.endsWith(".webp")) effectiveContentType = "image/webp";
+        else if (filename.endsWith(".gif")) effectiveContentType = "image/gif";
+        else effectiveContentType = "video/mp4";
+      }
+
       const res = await requestPresignedUploadAction({
         resourceFolder: "exercises",
-        contentType: uploadFile.type,
+        contentType: effectiveContentType,
       });
 
       if (!res.ok || !res.data) {
         throw new Error(res.message || "Erro ao obter permissão de upload.");
       }
 
-      setUploadProgress("Enviando arquivo diretamente para o armazenamento do SaaS...");
+      setUploadProgress("Enviando arquivo diretamente para o Cloudflare R2...");
 
       const uploadHttp = await fetch(res.data.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": uploadFile.type },
+        headers: { "Content-Type": effectiveContentType },
         body: uploadFile,
       });
 
       if (!uploadHttp.ok) {
-        throw new Error("Falha na transferência do arquivo para o bucket R2.");
+        throw new Error(
+          `Falha na transferência (${uploadHttp.status}: ${uploadHttp.statusText}). Verifique a política de CORS do bucket R2.`
+        );
       }
 
       setUploadProgress("Registrando na sua galeria...");
 
+      const isVideo =
+        effectiveContentType.startsWith("video/") ||
+        /\.(mp4|mov|webm|m4v|ogv|3gp)$/i.test(filename);
+
       const form = e.currentTarget;
       const formData = new FormData(form);
       formData.set("url", res.data.publicUrl);
-      formData.set(
-        "mediaType",
-        uploadFile.type.startsWith("video/") ? "VIDEO" : "IMAGE"
-      );
+      formData.set("mediaType", isVideo ? "VIDEO" : "IMAGE");
 
       startTransition(async () => {
         await createTenantMediaAction({} as ActionState, formData);
@@ -418,12 +435,12 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
 
                 <div className="space-y-1">
                   <Label htmlFor="upload-file" className="text-xs">
-                    Arquivo (JPEG, PNG, WebP, MP4, WebM) *
+                    Arquivo de Vídeo ou Imagem (MP4, MOV, WebM, JPEG, PNG, WebP) *
                   </Label>
                   <Input
                     id="upload-file"
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                    accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*,image/jpeg,image/png,image/webp,image/gif,image/*"
                     required
                     onChange={(e) => {
                       const f = e.target.files?.[0];

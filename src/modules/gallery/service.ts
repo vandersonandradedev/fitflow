@@ -19,7 +19,11 @@ function detectStorageProvider(url: string): StorageProvider {
   if (lower.includes("vimeo.com")) {
     return "VIMEO";
   }
-  if (lower.includes(".r2.cloudflarestorage.com") || lower.includes("media.fitflow.app")) {
+  if (
+    lower.includes(".r2.cloudflarestorage.com") ||
+    lower.includes(".r2.dev") ||
+    lower.includes("media.fitflow.app")
+  ) {
     return "R2";
   }
   return "EXTERNAL";
