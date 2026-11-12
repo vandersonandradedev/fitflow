@@ -77,7 +77,13 @@ export default async function CoachExerciseDetailPage({
           </h2>
 
           {primaryMedia?.url ? (
-            <MediaPreview url={primaryMedia.url} alt={`Demonstração de ${exercise.name}`} />
+            <MediaPreview
+              url={primaryMedia.url}
+              alt={`Demonstração de ${exercise.name}`}
+              aspectRatio="4/3"
+              fit="contain"
+              className="min-h-[280px] sm:min-h-[340px]"
+            />
           ) : (
             <div className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
               Nenhuma mídia demonstrativa cadastrada.

@@ -57,7 +57,7 @@ export function ExerciseGuideDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl sm:max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{exercise.name}</DialogTitle>
           <DialogDescription>
@@ -67,7 +67,13 @@ export function ExerciseGuideDialog({
 
         <div className="mt-4 space-y-4">
           {exercise.mediaUrl ? (
-            <MediaPreview url={exercise.mediaUrl} alt={exercise.name} />
+            <MediaPreview
+              url={exercise.mediaUrl}
+              alt={exercise.name}
+              aspectRatio="4/3"
+              fit="contain"
+              className="w-full min-h-[280px] sm:min-h-[360px]"
+            />
           ) : (
             <div className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
               Nenhuma mídia demonstrativa vinculada a este exercício.

@@ -22,9 +22,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
+import { MediaPreview } from "@/components/ui/media-preview";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { RestChronometer } from "@/components/ui/rest-chronometer";
+import { formatBrazilDate } from "@/lib/date";
 import { SafeImage } from "@/components/ui/safe-image";
 import { StoryCardDialog } from "@/components/ui/story-card-dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,6 +128,7 @@ export function WorkoutRunner({
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [rpe, setRpe] = useState<number>(8);
   const [studentFeedback, setStudentFeedback] = useState("");
+  const [showInlineGif, setShowInlineGif] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -444,11 +447,12 @@ export function WorkoutRunner({
                     triggerVariant="ghost"
                     triggerClassName="p-0 h-auto rounded-lg overflow-hidden shrink-0 group border border-border/80 focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-lg bg-black/40 cursor-pointer">
+                    <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg bg-[#090B0E] cursor-pointer flex items-center justify-center">
                       <SafeImage
                         src={activeExercise.mediaUrl}
                         alt={activeExercise.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        className="h-full w-full object-contain transition-transform group-hover:scale-105"
+                        containerClassName="h-full w-full flex items-center justify-center"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">
                         <Play className="h-4 w-4 fill-white text-white drop-shadow" />
@@ -475,19 +479,45 @@ export function WorkoutRunner({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-              <ExerciseGuideDialog
-                exercise={{
-                  name: activeExercise.name,
-                  categoryName: activeExercise.categoryName,
-                  primaryMuscleGroup: activeExercise.primaryMuscleGroup,
-                  mediaUrl: activeExercise.mediaUrl,
-                  coachNotes: activeExercise.coachNotes,
-                  instructions: activeExercise.instructions,
-                }}
-                triggerLabel="Ver instruções e vídeo"
-                triggerClassName="h-9 px-3 text-xs font-medium"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <ExerciseGuideDialog
+                  exercise={{
+                    name: activeExercise.name,
+                    categoryName: activeExercise.categoryName,
+                    primaryMuscleGroup: activeExercise.primaryMuscleGroup,
+                    mediaUrl: activeExercise.mediaUrl,
+                    coachNotes: activeExercise.coachNotes,
+                    instructions: activeExercise.instructions,
+                  }}
+                  triggerLabel="Ver instruções e vídeo"
+                  triggerClassName="h-9 px-3 text-xs font-medium"
+                />
+
+                {activeExercise.mediaUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowInlineGif(!showInlineGif)}
+                    className="h-9 px-3 text-xs font-medium text-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                  >
+                    {showInlineGif ? "Ocultar GIF" : "Fixar GIF na tela"}
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {showInlineGif && activeExercise.mediaUrl && (
+              <div className="mt-2 overflow-hidden rounded-xl border border-border bg-[#090B0E] p-1 shadow-sm">
+                <MediaPreview
+                  url={activeExercise.mediaUrl}
+                  alt={activeExercise.name}
+                  aspectRatio="4/3"
+                  fit="contain"
+                  className="w-full min-h-[260px] sm:min-h-[340px] max-h-[440px]"
+                />
+              </div>
+            )}
 
             {activeExercise.coachNotes && (
               <p className="border-l-2 border-primary/60 bg-primary/[0.04] pl-3 py-1.5 pr-2 rounded-r text-xs text-muted-foreground leading-relaxed">
@@ -837,7 +867,7 @@ export function WorkoutRunner({
         data={{
           workoutName: dayName,
           studentName: studentName || "Aluno",
-          dateStr: new Date().toLocaleDateString("pt-BR", {
+          dateStr: formatBrazilDate(new Date(), {
             weekday: "long",
             day: "2-digit",
             month: "short",

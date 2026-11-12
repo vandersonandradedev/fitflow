@@ -1,5 +1,6 @@
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatBrazilDate } from "@/lib/date";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
@@ -156,7 +157,7 @@ export default async function CoachProgressPage({
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {latestAssessment
-              ? new Date(latestAssessment.assessmentDate).toLocaleDateString("pt-BR")
+              ? formatBrazilDate(latestAssessment.assessmentDate)
               : "Sem avaliação"}
           </p>
         </div>
@@ -285,7 +286,7 @@ export default async function CoachProgressPage({
                 return (
                   <TableRow key={a.id}>
                     <TableCell className="font-mono tabular-nums font-medium">
-                      {new Date(a.assessmentDate).toLocaleDateString("pt-BR")}
+                      {formatBrazilDate(a.assessmentDate)}
                     </TableCell>
                     <TableCell className="font-mono tabular-nums font-semibold text-primary">
                       {Number(a.weightKg)} kg

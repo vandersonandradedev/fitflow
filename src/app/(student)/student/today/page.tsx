@@ -5,20 +5,12 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExerciseGuideDialog } from "@/components/ui/exercise-detail-dialog";
 import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { SafeImage } from "@/components/ui/safe-image";
 import { prisma } from "@/lib/db";
+import { getBrazilDayOfWeek } from "@/lib/date";
 import { requireStudentContext } from "@/server/auth/session";
 import { startSessionAction } from "../session/actions";
-
-const JS_DAY_TO_ENUM = [
-  "SUNDAY",
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-] as const;
 
 export default async function StudentTodayPage({
   searchParams,
@@ -125,7 +117,7 @@ export default async function StudentTodayPage({
       : undefined) ?? activePrograms[0];
 
   const publishedVersion = activeProgram?.versions[0];
-  const todayDow = JS_DAY_TO_ENUM[new Date().getDay()];
+  const todayDow = getBrazilDayOfWeek();
   const trainingDay =
     (params.dayId
       ? publishedVersion?.trainingDays.find((d) => d.id === params.dayId)
@@ -151,6 +143,8 @@ export default async function StudentTodayPage({
         </div>
         <OfflineSyncBadge />
       </div>
+
+      <PushNotificationPrompt />
 
       {/* In-Progress Session Banner */}
       {inProgressSession && (
@@ -303,14 +297,15 @@ export default async function StudentTodayPage({
                           triggerVariant="ghost"
                           triggerClassName="p-0 h-auto rounded-md overflow-hidden shrink-0 group border border-border/80"
                         >
-                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-secondary cursor-pointer">
+                          <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-lg bg-[#090B0E] cursor-pointer flex items-center justify-center">
                             <SafeImage
                               src={item.exercise.media[0].url}
                               alt={item.exercise.name}
-                              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                              className="h-full w-full object-contain transition-transform group-hover:scale-105"
+                              containerClassName="h-full w-full flex items-center justify-center"
                             />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">
-                              <Play className="h-3 w-3 fill-white text-white drop-shadow" />
+                              <Play className="h-3.5 w-3.5 fill-white text-white drop-shadow" />
                             </div>
                           </div>
                         </ExerciseGuideDialog>

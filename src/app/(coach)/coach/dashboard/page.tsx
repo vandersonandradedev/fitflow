@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatWeight } from "@/lib/utils";
+import { formatBrazilDate } from "@/lib/date";
 import { requireCoachContext } from "@/server/auth/session";
 
 export default async function CoachDashboardPage() {
@@ -142,7 +143,7 @@ export default async function CoachDashboardPage() {
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground whitespace-nowrap">
                       {activity.completedAt
-                        ? new Date(activity.completedAt).toLocaleDateString("pt-BR")
+                        ? formatBrazilDate(activity.completedAt)
                         : "—"}
                     </TableCell>
                   </TableRow>

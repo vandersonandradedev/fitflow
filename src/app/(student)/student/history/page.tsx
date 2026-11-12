@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OfflineSyncBadge } from "@/components/ui/offline-sync-badge";
 import { prisma } from "@/lib/db";
+import { formatBrazilDateTime } from "@/lib/date";
 import { listStudentSessionHistory } from "@/modules/sessions/service";
 import { requireStudentContext } from "@/server/auth/session";
 import { ShareStoryButton } from "./share-story-button";
@@ -47,14 +48,7 @@ export default async function StudentHistoryPage() {
         <div className="space-y-4">
           {sessions.map((session) => {
             const dateStr = session.completedAt
-              ? new Date(session.completedAt).toLocaleDateString("pt-BR", {
-                  weekday: "short",
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+              ? formatBrazilDateTime(session.completedAt)
               : "Concluído";
 
             const durationMinutes = session.totalDurationSeconds

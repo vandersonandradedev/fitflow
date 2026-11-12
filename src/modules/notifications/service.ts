@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
+import { getBrazilDayOfWeek, getStartOfBrazilDay } from "@/lib/date";
 import { type TenantContext } from "@/server/auth/context";
+import { sendPushToUser } from "@/server/notifications/push";
 import { CreateNotificationInput, PushSubscriptionInput } from "./types";
 
 const JS_DOW_TO_ENUM = [
@@ -74,6 +76,15 @@ export async function createNotification(
     },
   });
 
+  // Dispara Push Notification em background para o celular/dispositivo do usuário
+  sendPushToUser(input.userId, {
+    title: input.title,
+    body: input.message,
+    url: input.link,
+  }).catch((err) => {
+    console.error("[push] Falha ao disparar push em createNotification:", err);
+  });
+
   return notification;
 }
 
@@ -81,7 +92,7 @@ export async function createNotification(
  * Dispara lembretes matinais para alunos que possuem treino programado no dia de hoje.
  */
 export async function dispatchMorningWorkoutReminders() {
-  const todayDow = JS_DOW_TO_ENUM[new Date().getDay()];
+  const todayDow = getBrazilDayOfWeek();
 
   // Busca todos os programas ativos que possuem versão publicada com dia no DOW de hoje
   const activePrograms = await prisma.trainingProgram.findMany({
@@ -130,9 +141,8 @@ export async function dispatchMorningWorkoutReminders() {
     const title = `Treino de Hoje: ${trainingDay.name}`;
     const message = `Bom dia, ${firstName}! Seu treino "${trainingDay.name}" está agendado para hoje. Bora treinar?`;
 
-    // Evita duplicar lembrete no mesmo dia
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Evita duplicar lembrete no mesmo dia (início do dia no fuso de Brasília)
+    const todayStart = getStartOfBrazilDay();
 
     const alreadySent = await prisma.notification.findFirst({
       where: {

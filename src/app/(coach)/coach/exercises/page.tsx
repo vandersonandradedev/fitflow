@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
+import { SafeImage } from "@/components/ui/safe-image";
 import {
   listExerciseCategories,
   listExercisesForTenant,
@@ -184,13 +185,13 @@ export default async function CoachExercisesPage({
                     </Badge>
                   </div>
 
-                  {primaryMedia?.url && primaryMedia.url.startsWith("/images/") && (
-                    <div className="overflow-hidden rounded-md border border-border bg-background">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                  {primaryMedia?.url && (
+                    <div className="overflow-hidden rounded-md border border-border bg-[#090B0E] flex items-center justify-center">
+                      <SafeImage
                         src={primaryMedia.url}
                         alt={`Demonstração de ${exercise.name}`}
-                        className="h-28 w-full object-cover"
+                        className="h-44 sm:h-48 w-full object-contain"
+                        containerClassName="h-44 sm:h-48 w-full flex items-center justify-center"
                       />
                     </div>
                   )}

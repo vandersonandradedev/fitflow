@@ -316,11 +316,12 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
                     <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1">
                       Preview Detectado ({parsedLiveLink.provider}):
                     </p>
-                    <div className="h-28 w-full rounded overflow-hidden">
+                    <div className="h-44 sm:h-52 w-full rounded overflow-hidden">
                       <MediaPreview
                         url={linkUrl}
                         alt="Preview"
-                        aspectRatio="video"
+                        aspectRatio="4/3"
+                        fit="contain"
                         className="w-full h-full"
                       />
                     </div>
@@ -667,12 +668,13 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="mt-2 rounded-xl overflow-hidden bg-black/90 max-h-[60vh] flex items-center justify-center">
+            <div className="mt-2 rounded-xl overflow-hidden bg-black/90 max-h-[70vh] flex items-center justify-center">
               <MediaPreview
                 url={previewItem.url}
                 alt={previewItem.title}
-                aspectRatio="video"
-                className="w-full h-full"
+                aspectRatio="4/3"
+                fit="contain"
+                className="w-full h-full min-h-[300px] sm:min-h-[400px]"
               />
             </div>
 
