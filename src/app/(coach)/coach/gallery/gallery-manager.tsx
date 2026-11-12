@@ -179,9 +179,13 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
       });
     } catch (err) {
       setUploadProgress(null);
-      setUploadError(
-        err instanceof Error ? err.message : "Erro no upload do arquivo."
-      );
+      let errorMsg =
+        err instanceof Error ? err.message : "Erro no upload do arquivo.";
+      if (errorMsg === "Failed to fetch") {
+        errorMsg =
+          "Falha na conexão ao Cloudflare R2 (Failed to fetch). Verifique se a política de CORS no bucket R2 permite a origem da aplicação e se as credenciais na Vercel estão ativas.";
+      }
+      setUploadError(errorMsg);
     }
   };
 

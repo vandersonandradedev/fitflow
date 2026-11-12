@@ -50,9 +50,14 @@ function cleanAccountId(rawId?: string): string | null {
  * O Cloudflare R2 tem taxa de EGRESS ZERO (transferência de dados de saída gratuita).
  */
 function getR2Client(): S3Client | null {
-  const accountId = cleanAccountId(process.env.CLOUDFLARE_R2_ACCOUNT_ID);
-  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  const accountId = cleanAccountId(
+    process.env.CLOUDFLARE_R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID
+  );
+  const accessKeyId =
+    process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey =
+    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ||
+    process.env.R2_SECRET_ACCESS_KEY;
 
   if (!accountId || !accessKeyId || !secretAccessKey) {
     return null;
@@ -99,9 +104,14 @@ export async function generatePresignedUploadUrl({
   }
 
   const s3 = getR2Client();
-  const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME || "fitflow-media";
+  const bucket =
+    process.env.CLOUDFLARE_R2_BUCKET_NAME ||
+    process.env.R2_BUCKET_NAME ||
+    "fitflow-media";
   const rawBaseUrl =
-    process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://media.fitflow.app";
+    process.env.CLOUDFLARE_R2_PUBLIC_URL ||
+    process.env.R2_PUBLIC_URL ||
+    "https://media.fitflow.app";
   const publicBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 
   const ext = EXTENSION_MAP[contentType as AllowedContentType] || "bin";
@@ -109,13 +119,9 @@ export async function generatePresignedUploadUrl({
   const key = `tenants/${tenantId}/${resourceFolder}/${fileId}.${ext}`;
 
   if (!s3) {
-    // Modo simulação para desenvolvimento local caso as credenciais R2 não estejam preenchidas
-    return {
-      uploadUrl: `https://mock-upload.fitflow.local/${key}`,
-      publicUrl: `${publicBaseUrl}/${key}`,
-      key,
-      expiresInSeconds: 900,
-    };
+    throw new ValidationError(
+      "Credenciais do Cloudflare R2 ausentes no servidor. Configure as variáveis CLOUDFLARE_R2_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID e CLOUDFLARE_R2_SECRET_ACCESS_KEY no painel da Vercel (Environment Variables) e faça um Redeploy."
+    );
   }
 
   const command = new PutObjectCommand({
