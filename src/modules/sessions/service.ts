@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertStudent, isCoach, type TenantContext } from "@/server/auth/context";
 import { writeAudit } from "@/server/audit";
+import { sendPushToUser } from "@/server/notifications/push";
 import { ConflictError, NotFoundError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import {
@@ -274,7 +275,14 @@ export async function finishWorkoutSession(
     }
   }
 
-  return prisma.$transaction(async (tx) => {
+  let pushPayload: {
+    userId: string;
+    title: string;
+    message: string;
+    link: string;
+  } | null = null;
+
+  const result = await prisma.$transaction(async (tx) => {
     // Remove logs preliminares da sessão para substituir pelo estado real executado
     await tx.exerciseLog.deleteMany({
       where: { workoutSessionId: session.id },
@@ -360,6 +368,8 @@ export async function finishWorkoutSession(
       }
 
       const rpeText = data.perceivedExertionRpe ? ` · RPE ${data.perceivedExertionRpe}/10` : "";
+      const notificationMessage = `${studentName} concluiu "${session.trainingDay.name}" (${totalVolumeKg.toLocaleString("pt-BR")} kg em ${durationMin} min${rpeText}).`;
+      const notificationLink = `/coach/students/${session.studentProfileId}`;
 
       await tx.notification.create({
         data: {
@@ -367,10 +377,17 @@ export async function finishWorkoutSession(
           userId: coachMember.userId,
           type,
           title,
-          message: `${studentName} concluiu "${session.trainingDay.name}" (${totalVolumeKg.toLocaleString("pt-BR")} kg em ${durationMin} min${rpeText}).`,
-          link: `/coach/students/${session.studentProfileId}`,
+          message: notificationMessage,
+          link: notificationLink,
         },
       });
+
+      pushPayload = {
+        userId: coachMember.userId,
+        title,
+        message: notificationMessage,
+        link: notificationLink,
+      };
     }
 
     await writeAudit(tx, {
@@ -387,6 +404,19 @@ export async function finishWorkoutSession(
 
     return updatedSession;
   });
+
+  // Dispara notificação push em segundo plano para o personal trainer
+  if (pushPayload) {
+    sendPushToUser(pushPayload.userId, {
+      title: pushPayload.title,
+      body: pushPayload.message,
+      url: pushPayload.link,
+    }).catch((err) => {
+      console.error("[push] Falha ao disparar push na conclusão do treino:", err);
+    });
+  }
+
+  return result;
 }
 
 /**
