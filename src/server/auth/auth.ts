@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: 4 * 60 * 60, updateAge: 15 * 60 },
   pages: { signIn: "/login" },
   providers: [
     Credentials({
@@ -50,10 +50,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     jwt({ token, user }) {
+      const now = Math.floor(Date.now() / 1000);
       if (user?.id) {
         token.uid = user.id;
         token.sv = user.sessionVersion ?? 0;
+        token.authTime = now;
       }
+
+      // Limite absoluto de 4 horas por sessão
+      if (token.authTime && typeof token.authTime === "number") {
+        if (now - token.authTime > 4 * 60 * 60) {
+          return null;
+        }
+      }
+
       return token;
     },
     session({ session, token }) {

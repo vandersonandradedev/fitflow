@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { PwaServiceWorkerRegister } from "@/components/pwa-service-worker-register";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
+import { SessionActivityMonitor } from "@/components/session-activity-monitor";
 import "./globals.css";
 
 const inter = Inter({
@@ -71,6 +72,7 @@ export default function RootLayout({
       >
         <PwaServiceWorkerRegister />
         <PwaInstallBanner />
+        <SessionActivityMonitor />
         {children}
       </body>
     </html>

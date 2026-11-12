@@ -6,7 +6,11 @@ import { resolveTenantContext } from "@/server/auth/context";
 import { Button } from "@/components/ui/button";
 import { FitFlowLogo, FitFlowIcon } from "@/components/ui/logo";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ site?: string }>;
+}) {
   const session = await auth().catch(() => null);
   if (session?.user?.id && session.sessionVersion >= 0) {
     const ctx = await resolveTenantContext(session.user.id, session.sessionVersion).catch(() => null);
@@ -14,6 +18,12 @@ export default async function HomePage() {
       if (ctx.role === "STUDENT") redirect("/student/today");
       redirect("/coach/dashboard");
     }
+  }
+
+  // No acesso padrão ao Web App (PWA ou navegador), exibe sempre a tela de login
+  const params = await searchParams;
+  if (params?.site !== "true" && params?.site !== "1") {
+    redirect("/login");
   }
 
   return (
