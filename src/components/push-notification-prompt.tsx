@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check, Droplets, Moon, Sparkles, Utensils, X } from "lucide-react";
+import { Bell, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  savePushSubscriptionAction,
-  sendHabitTestPushAction,
-} from "@/modules/notifications/push-actions";
+import { savePushSubscriptionAction } from "@/modules/notifications/push-actions";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -25,19 +22,6 @@ export function PushNotificationPrompt() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const [testingHabit, setTestingHabit] = useState<string | null>(null);
-
-  const handleTestHabit = async (type: "WATER" | "NUTRITION" | "SLEEP") => {
-    setTestingHabit(type);
-    try {
-      const res = await sendHabitTestPushAction(type);
-      if (res.error) {
-        alert(res.error);
-      }
-    } finally {
-      setTestingHabit(null);
-    }
-  };
 
   useEffect(() => {
     if (
@@ -119,70 +103,8 @@ export function PushNotificationPrompt() {
     }
   };
 
-  if (!supported || dismissed) {
+  if (!supported || isSubscribed || dismissed) {
     return null;
-  }
-
-  // Painel de confirmação e testes de hábitos para quem já ativou
-  if (isSubscribed) {
-    return (
-      <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-card p-3.5 shadow-sm">
-        <button
-          type="button"
-          onClick={() => setDismissed(true)}
-          aria-label="Ocultar aviso de notificações"
-          className="absolute right-2.5 top-2.5 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-        <div className="flex items-center gap-2 mb-1.5 pr-6">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
-            <Check className="h-3 w-3 stroke-[2.5]" />
-          </div>
-          <span className="text-xs font-semibold text-foreground">
-            Lembretes no Celular Ativados
-          </span>
-        </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5 pr-4">
-          Você receberá avisos automáticos de treinos, água, alimentação e sono com o app fechado. Teste o toque agora:
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleTestHabit("WATER")}
-            disabled={testingHabit !== null}
-            className="h-7 text-[11px] px-2.5 gap-1 hover:text-cyan-400 hover:border-cyan-500/40"
-          >
-            <Droplets className="h-3 w-3 text-cyan-500" />
-            {testingHabit === "WATER" ? "Enviando..." : "Testar Água"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleTestHabit("NUTRITION")}
-            disabled={testingHabit !== null}
-            className="h-7 text-[11px] px-2.5 gap-1 hover:text-emerald-400 hover:border-emerald-500/40"
-          >
-            <Utensils className="h-3 w-3 text-emerald-500" />
-            {testingHabit === "NUTRITION" ? "Enviando..." : "Testar Alimentação"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handleTestHabit("SLEEP")}
-            disabled={testingHabit !== null}
-            className="h-7 text-[11px] px-2.5 gap-1 hover:text-indigo-300 hover:border-indigo-400/40"
-          >
-            <Moon className="h-3 w-3 text-indigo-400" />
-            {testingHabit === "SLEEP" ? "Enviando..." : "Testar Sono"}
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   // Card de ativação inicial (aparece apenas quando ainda não estiver inscrito)
