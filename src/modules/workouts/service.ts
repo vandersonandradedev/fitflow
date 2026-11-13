@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertCoach, isCoach, type TenantContext } from "@/server/auth/context";
 import { writeAudit } from "@/server/audit";
+import { sendPushToUser } from "@/server/notifications/push";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import {
@@ -462,7 +463,7 @@ export async function publishProgramVersion(
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  const published = await prisma.$transaction(async (tx) => {
     // Arquiva versões publicadas anteriores do mesmo programa
     await tx.trainingProgramVersion.updateMany({
       where: {
@@ -525,6 +526,17 @@ export async function publishProgramVersion(
 
     return published;
   });
+
+  // Dispara notificação push em segundo plano para o celular do aluno
+  sendPushToUser(draft.program.studentProfile.userId, {
+    title: "Novo treino publicado! 🏋️",
+    body: `Seu treinador publicou a versão v${published.versionNumber} do programa "${draft.program.title}". Toque para ver seus exercícios!`,
+    url: "/student/today",
+  }).catch((err) => {
+    console.error("[push] Falha ao enviar push de novo treino:", err);
+  });
+
+  return published;
 }
 
 /**

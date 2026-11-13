@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getBrazilDayOfWeek, getStartOfBrazilDay } from "@/lib/date";
 import { type TenantContext } from "@/server/auth/context";
 import { sendPushToUser } from "@/server/notifications/push";
+import { AIEngagementAgent } from "@/modules/ai/engagement-agent";
 import { CreateNotificationInput, PushSubscriptionInput } from "./types";
 
 /**
@@ -80,6 +81,7 @@ export async function createNotification(
 
 /**
  * Dispara lembretes matinais para alunos que possuem treino programado no dia de hoje.
+ * Utiliza o Agente Autônomo de Engajamento para gerar mensagens dinâmicas e motivadoras.
  */
 export async function dispatchMorningWorkoutReminders() {
   const todayDow = getBrazilDayOfWeek();
@@ -103,6 +105,7 @@ export async function dispatchMorningWorkoutReminders() {
         select: {
           id: true,
           userId: true,
+          fitnessGoal: true,
           user: { select: { name: true, email: true } },
         },
       },
@@ -127,10 +130,6 @@ export async function dispatchMorningWorkoutReminders() {
     const trainingDay = prog.versions[0]?.trainingDays[0];
     if (!studentUser || !trainingDay) continue;
 
-    const firstName = studentUser.name?.split(" ")[0] || "Aluno";
-    const title = `Treino de Hoje: ${trainingDay.name}`;
-    const message = `Bom dia, ${firstName}! Seu treino "${trainingDay.name}" está agendado para hoje. Bora treinar?`;
-
     // Evita duplicar lembrete no mesmo dia (início do dia no fuso de Brasília)
     const todayStart = getStartOfBrazilDay();
 
@@ -139,16 +138,116 @@ export async function dispatchMorningWorkoutReminders() {
         tenantId: prog.tenantId,
         userId: prog.studentProfile.userId,
         type: "WORKOUT_ASSIGNED",
-        title: { startsWith: "Treino de Hoje:" },
+        title: { contains: "Treino" },
         createdAt: { gte: todayStart },
       },
     });
 
     if (!alreadySent) {
+      const aiMsg = await AIEngagementAgent.getMorningWorkoutReminder({
+        studentName: studentUser.name || "Aluno",
+        fitnessGoal: prog.studentProfile.fitnessGoal,
+        todaysWorkoutName: trainingDay.name,
+      });
+
       await createNotification(prog.tenantId, {
         userId: prog.studentProfile.userId,
-        title,
-        message,
+        title: aiMsg.title,
+        message: aiMsg.message,
+        type: "WORKOUT_ASSIGNED",
+        link: "/student/today",
+      });
+      dispatchedCount++;
+    }
+  }
+
+  return { dispatchedCount };
+}
+
+/**
+ * Dispara lembrete de fim de tarde (17h/18h) exclusivamente para alunos com treino hoje
+ * que AINDA NÃO registraram o treino concluído no sistema.
+ */
+export async function dispatchEveningWorkoutReminders() {
+  const todayDow = getBrazilDayOfWeek();
+  const todayStart = getStartOfBrazilDay();
+
+  const activePrograms = await prisma.trainingProgram.findMany({
+    where: {
+      isActive: true,
+      versions: {
+        some: {
+          status: "PUBLISHED",
+          trainingDays: {
+            some: { dayOfWeek: todayDow },
+          },
+        },
+      },
+    },
+    select: {
+      tenantId: true,
+      studentProfile: {
+        select: {
+          id: true,
+          userId: true,
+          fitnessGoal: true,
+          user: { select: { name: true, email: true } },
+          workoutSessions: {
+            where: {
+              status: "COMPLETED",
+              completedAt: { gte: todayStart },
+            },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      },
+      versions: {
+        where: { status: "PUBLISHED" },
+        take: 1,
+        orderBy: { versionNumber: "desc" },
+        select: {
+          trainingDays: {
+            where: { dayOfWeek: todayDow },
+            select: { name: true },
+          },
+        },
+      },
+    },
+  });
+
+  let dispatchedCount = 0;
+
+  for (const prog of activePrograms) {
+    // Aluno já treinou hoje: missão cumprida, sem cobrança!
+    if (prog.studentProfile.workoutSessions.length > 0) continue;
+
+    const studentUser = prog.studentProfile.user;
+    const trainingDay = prog.versions[0]?.trainingDays[0];
+    if (!studentUser || !trainingDay) continue;
+
+    // Evita duplicar lembrete de encerramento no mesmo dia
+    const alreadySent = await prisma.notification.findFirst({
+      where: {
+        tenantId: prog.tenantId,
+        userId: prog.studentProfile.userId,
+        type: "WORKOUT_ASSIGNED",
+        title: { startsWith: "Ainda dá tempo" },
+        createdAt: { gte: todayStart },
+      },
+    });
+
+    if (!alreadySent) {
+      const aiMsg = await AIEngagementAgent.getEveningPendingWorkoutReminder({
+        studentName: studentUser.name || "Aluno",
+        fitnessGoal: prog.studentProfile.fitnessGoal,
+        todaysWorkoutName: trainingDay.name,
+      });
+
+      await createNotification(prog.tenantId, {
+        userId: prog.studentProfile.userId,
+        title: aiMsg.title,
+        message: aiMsg.message,
         type: "WORKOUT_ASSIGNED",
         link: "/student/today",
       });
@@ -305,15 +404,16 @@ export async function notifyCoachOnSessionFinish(params: {
 
 /**
  * Dispara lembretes de hidratação (água) para alunos ativos.
- * Evita repetição nas últimas 4 horas.
+ * Evita repetição nas últimas 3.5 horas.
  */
 export async function dispatchWaterReminders() {
-  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
   const activeStudents = await prisma.studentProfile.findMany({
     where: { status: "ACTIVE" },
     select: {
       tenantId: true,
       userId: true,
+      fitnessGoal: true,
       user: { select: { name: true } },
     },
   });
@@ -321,24 +421,25 @@ export async function dispatchWaterReminders() {
   let dispatchedCount = 0;
 
   for (const student of activeStudents) {
-    const firstName = student.user.name?.split(" ")[0] || "Aluno";
-    const title = "Hora de Hidratar! 💧";
-    const message = `Olá, ${firstName}! Beba um copo de água agora (300ml a 500ml) para manter seu rendimento muscular e acelerar sua recuperação.`;
-
     const alreadySent = await prisma.notification.findFirst({
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { startsWith: "Hora de Hidratar!" },
-        createdAt: { gte: fourHoursAgo },
+        title: { contains: "Hidrat" },
+        createdAt: { gte: cutoff },
       },
     });
 
     if (!alreadySent) {
+      const aiMsg = await AIEngagementAgent.getWaterReminder({
+        studentName: student.user.name || "Aluno",
+        fitnessGoal: student.fitnessGoal,
+      });
+
       await createNotification(student.tenantId, {
         userId: student.userId,
-        title,
-        message,
+        title: aiMsg.title,
+        message: aiMsg.message,
         type: "SYSTEM",
         link: "/student/today",
       });
@@ -360,6 +461,7 @@ export async function dispatchNutritionReminders() {
     select: {
       tenantId: true,
       userId: true,
+      fitnessGoal: true,
       user: { select: { name: true } },
     },
   });
@@ -367,24 +469,25 @@ export async function dispatchNutritionReminders() {
   let dispatchedCount = 0;
 
   for (const student of activeStudents) {
-    const firstName = student.user.name?.split(" ")[0] || "Aluno";
-    const title = "Combustível do Corpo! 🥗";
-    const message = `Olá, ${firstName}! Lembre-se de fazer uma refeição equilibrada e priorizar proteínas para alimentar seus músculos e recuperar as energias.`;
-
     const alreadySent = await prisma.notification.findFirst({
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { startsWith: "Combustível do Corpo!" },
+        title: { contains: "Nutri" },
         createdAt: { gte: todayStart },
       },
     });
 
     if (!alreadySent) {
+      const aiMsg = await AIEngagementAgent.getNutritionReminder({
+        studentName: student.user.name || "Aluno",
+        fitnessGoal: student.fitnessGoal,
+      });
+
       await createNotification(student.tenantId, {
         userId: student.userId,
-        title,
-        message,
+        title: aiMsg.title,
+        message: aiMsg.message,
         type: "SYSTEM",
         link: "/student/today",
       });
@@ -406,6 +509,7 @@ export async function dispatchSleepReminders() {
     select: {
       tenantId: true,
       userId: true,
+      fitnessGoal: true,
       user: { select: { name: true } },
     },
   });
@@ -413,24 +517,25 @@ export async function dispatchSleepReminders() {
   let dispatchedCount = 0;
 
   for (const student of activeStudents) {
-    const firstName = student.user.name?.split(" ")[0] || "Aluno";
-    const title = "Recuperação e Sono Reparador 🌙";
-    const message = `Boa noite, ${firstName}! Hora de desacelerar das telas. O descanso de qualidade (7 a 8 horas) é onde seu corpo reconstrói fibras musculares e renova sua saúde.`;
-
     const alreadySent = await prisma.notification.findFirst({
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { startsWith: "Recuperação e Sono Reparador" },
+        title: { contains: "Sono" },
         createdAt: { gte: todayStart },
       },
     });
 
     if (!alreadySent) {
+      const aiMsg = await AIEngagementAgent.getSleepReminder({
+        studentName: student.user.name || "Aluno",
+        fitnessGoal: student.fitnessGoal,
+      });
+
       await createNotification(student.tenantId, {
         userId: student.userId,
-        title,
-        message,
+        title: aiMsg.title,
+        message: aiMsg.message,
         type: "SYSTEM",
         link: "/student/today",
       });
@@ -442,10 +547,11 @@ export async function dispatchSleepReminders() {
 }
 
 /**
- * Orquestrador de lembretes de hábitos saudáveis (Água, Nutrição, Sono).
+ * Orquestrador inteligente de hábitos saudáveis e engajamento dinâmico.
+ * Seleciona automaticamente o tipo de notificação ideal de acordo com a hora local (Brasília).
  */
 export async function dispatchHabitReminders(
-  mode: "AUTO" | "WATER" | "NUTRITION" | "SLEEP" | "ALL" = "AUTO"
+  mode: "AUTO" | "WATER" | "NUTRITION" | "SLEEP" | "EVENING" | "ALL" = "AUTO"
 ) {
   if (mode === "WATER") {
     return dispatchWaterReminders();
@@ -456,16 +562,21 @@ export async function dispatchHabitReminders(
   if (mode === "SLEEP") {
     return dispatchSleepReminders();
   }
+  if (mode === "EVENING") {
+    return dispatchEveningWorkoutReminders();
+  }
   if (mode === "ALL") {
-    const [water, nutrition, sleep] = await Promise.all([
+    const [water, nutrition, sleep, evening] = await Promise.all([
       dispatchWaterReminders(),
       dispatchNutritionReminders(),
       dispatchSleepReminders(),
+      dispatchEveningWorkoutReminders(),
     ]);
     return {
       waterDispatched: water.dispatchedCount,
       nutritionDispatched: nutrition.dispatchedCount,
       sleepDispatched: sleep.dispatchedCount,
+      eveningDispatched: evening.dispatchedCount,
     };
   }
 
@@ -480,8 +591,20 @@ export async function dispatchHabitReminders(
   );
 
   if (brazilHour >= 21) {
+    // 21h em diante: Sono reparador e desaceleração
     return dispatchSleepReminders();
+  } else if (brazilHour >= 17 && brazilHour <= 20) {
+    // 17h às 20h: Lembrete de treino pendente + hidratação
+    const [evening, water] = await Promise.all([
+      dispatchEveningWorkoutReminders(),
+      dispatchWaterReminders(),
+    ]);
+    return {
+      eveningDispatched: evening.dispatchedCount,
+      waterDispatched: water.dispatchedCount,
+    };
   } else if (brazilHour >= 11 && brazilHour <= 14) {
+    // 11h às 14h: Nutrição / Almoço proteico + hidratação
     const [nutr, wat] = await Promise.all([
       dispatchNutritionReminders(),
       dispatchWaterReminders(),
@@ -491,7 +614,7 @@ export async function dispatchHabitReminders(
       waterDispatched: wat.dispatchedCount,
     };
   } else {
-    // Manhã / Tarde: hidratação
+    // Manhã / Tarde: Hidratação
     return dispatchWaterReminders();
   }
 }

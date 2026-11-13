@@ -119,9 +119,20 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
       return;
     }
 
-    // Captura os dados do formulário imediatamente antes de qualquer operação assíncrona
-    // No React, e.currentTarget se torna null após chamadas com await
-    const formData = new FormData(e.currentTarget);
+    // Extrai os campos do formulário de forma síncrona e segura
+    const form = e.currentTarget;
+    const titleInput = form.elements.namedItem("title") as HTMLInputElement | null;
+    const categoryInput = form.elements.namedItem("category") as HTMLInputElement | null;
+    const tagsInput = form.elements.namedItem("tags") as HTMLInputElement | null;
+
+    const titleValue = titleInput?.value?.trim() || "";
+    const categoryValue = categoryInput?.value?.trim() || "";
+    const tagsValue = tagsInput?.value?.trim() || "";
+
+    if (!titleValue) {
+      setUploadError("Informe um título identificador para a mídia.");
+      return;
+    }
 
     setUploadError(null);
     setUploadProgress("Solicitando upload seguro ao Cloudflare R2...");
@@ -170,11 +181,15 @@ export function GalleryManager({ initialItems }: GalleryManagerProps) {
         effectiveContentType.startsWith("video/") ||
         /\.(mp4|mov|webm|m4v|ogv|3gp)$/i.test(filename);
 
-      formData.set("url", res.data.publicUrl);
-      formData.set("mediaType", isVideo ? "VIDEO" : "IMAGE");
+      const payloadFormData = new FormData();
+      payloadFormData.set("title", titleValue);
+      payloadFormData.set("category", categoryValue);
+      payloadFormData.set("tags", tagsValue);
+      payloadFormData.set("url", res.data.publicUrl);
+      payloadFormData.set("mediaType", isVideo ? "VIDEO" : "IMAGE");
 
       startTransition(async () => {
-        const actionResult = await createTenantMediaAction({} as ActionState, formData);
+        const actionResult = await createTenantMediaAction({} as ActionState, payloadFormData);
         if (!actionResult.ok) {
           setUploadError(actionResult.message || "Erro ao salvar mídia na galeria.");
           setUploadProgress(null);

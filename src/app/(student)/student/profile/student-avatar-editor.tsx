@@ -111,9 +111,13 @@ export function StudentAvatarEditor({
       });
     } catch (err) {
       setPreviewUrl(null);
-      setErrorMessage(
-        err instanceof Error ? err.message : "Erro inesperado ao salvar foto de perfil."
-      );
+      let msg =
+        err instanceof Error ? err.message : "Erro inesperado ao salvar foto de perfil.";
+      if (msg === "Failed to fetch") {
+        msg =
+          "Falha na conexão ao Cloudflare R2 (Failed to fetch). Verifique se a política de CORS do bucket R2 permite sua origem (https://fitflowgo.vercel.app).";
+      }
+      setErrorMessage(msg);
     } finally {
       setIsUploading(false);
     }

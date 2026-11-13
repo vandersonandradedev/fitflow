@@ -1,0 +1,25 @@
+name: FitFlow Engagement & Habits Cron
+
+on:
+  schedule:
+    # Dispara a cada 3 horas durante o dia nos horários chave de engajamento (Horário de Brasília):
+    # 07:00 BRT = 10:00 UTC (Treino do dia + Hidratação matinal)
+    # 10:00 BRT = 13:00 UTC (Hidratação)
+    # 12:30 BRT = 15:30 UTC (Almoço / Nutrição)
+    # 15:30 BRT = 18:30 UTC (Hidratação da tarde)
+    # 18:00 BRT = 21:00 UTC (Lembrete de treino pendente do dia)
+    # 21:30 BRT = 00:30 UTC (Higiene do sono & Recuperação muscular)
+    - cron: '0 10,13,21 * * *'
+    - cron: '30 15,18,0 * * *'
+  workflow_dispatch: # Permite disparo manual via GitHub
+
+jobs:
+  engagement-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Engagement Webhook
+        run: |
+          echo "Disparando cron de engajamento do FitFlow..."
+          curl -f -s -X GET "https://fitflowgo.vercel.app/api/cron/engagement?habit=auto" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            || echo "Aviso: Webhook executado."

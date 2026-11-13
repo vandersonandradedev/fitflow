@@ -9,6 +9,7 @@ import { listProgramsForTenant } from "@/modules/workouts/service";
 import { NotFoundError } from "@/server/errors";
 import { requireCoachContext } from "@/server/auth/session";
 import { EditStudentForm } from "./edit-student-form";
+import { NudgeStudentDialog } from "./nudge-dialog";
 
 export default async function StudentDetailPage({
   params,
@@ -64,6 +65,10 @@ export default async function StudentDetailPage({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <NudgeStudentDialog
+            studentProfileId={student.id}
+            studentName={student.user.name}
+          />
           <Link href={`/coach/progress?studentProfileId=${student.id}`}>
             <Button variant="outline" size="sm">
               Ver evolução
