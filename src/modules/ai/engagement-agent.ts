@@ -245,6 +245,10 @@ export const AIEngagementAgent = {
     );
   },
 
+  async getEveningWorkoutReminder(ctx: StudentEngagementContext): Promise<AIEngagementMessage> {
+    return this.getEveningPendingWorkoutReminder(ctx);
+  },
+
   async getWaterReminder(ctx: StudentEngagementContext): Promise<AIEngagementMessage> {
     return callGeminiIfAvailable(
       `Lembrete inteligente de hidratação focado em performance e recuperação muscular para o aluno.`,
@@ -275,5 +279,9 @@ export const AIEngagementAgent = {
       ctx,
       "CHURN"
     );
+  },
+
+  async getStudentChurnAlert(ctx: StudentEngagementContext): Promise<AIEngagementMessage> {
+    return this.getChurnReminder(ctx);
   },
 };
