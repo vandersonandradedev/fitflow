@@ -136,13 +136,13 @@ async function main() {
 
     const morningMsg = await AIEngagementAgent.getMorningWorkoutReminder({
       ...studentContext,
-      workoutTitle: "Treino A - Peito e Tríceps",
+      todaysWorkoutName: "Treino A - Peito e Tríceps",
     });
     console.log("   [A] Lembrete Matinal de Treino:", JSON.stringify(morningMsg));
 
     const eveningMsg = await AIEngagementAgent.getEveningWorkoutReminder({
       ...studentContext,
-      workoutTitle: "Treino A - Peito e Tríceps",
+      todaysWorkoutName: "Treino A - Peito e Tríceps",
     });
     console.log("   [B] Lembrete Noturno (Treino Pendente):", JSON.stringify(eveningMsg));
 
@@ -158,7 +158,7 @@ async function main() {
     const churnMsg = await AIEngagementAgent.getStudentChurnAlert({
       studentName: "Carlos Silva",
       daysInactive: 7,
-      lastWorkoutName: "Treino Fullbody",
+      lastCompletedWorkoutName: "Treino Fullbody",
     });
     console.log("   [F] Alerta de Aluno Sumido:", JSON.stringify(churnMsg));
 
