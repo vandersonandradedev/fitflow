@@ -270,7 +270,7 @@ export function WorkoutRunner({
 
     const payload = {
       sessionId,
-      totalDurationSeconds: Math.max(1, elapsedSeconds),
+      totalDurationSeconds: Math.min(Math.max(1, elapsedSeconds), 604800),
       perceivedExertionRpe: rpe,
       studentFeedback: studentFeedback.trim() || undefined,
       exercises: exercises.map((ex, idx) => ({
@@ -700,7 +700,7 @@ export function WorkoutRunner({
                   onClick={async () => {
                     const payload = {
                       sessionId,
-                      totalDurationSeconds: Math.max(1, elapsedSeconds),
+                      totalDurationSeconds: Math.min(Math.max(1, elapsedSeconds), 604800),
                       perceivedExertionRpe: rpe,
                       studentFeedback: studentFeedback.trim() || undefined,
                       exercises: exercises.map((ex, idx) => ({

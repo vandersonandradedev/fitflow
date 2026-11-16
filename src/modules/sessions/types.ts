@@ -42,7 +42,7 @@ export const finishSessionSchema = z.object({
     .number()
     .int()
     .min(1, "Duração mínima de 1 segundo")
-    .max(86400, "Duração máxima de 24 horas"),
+    .max(604800, "Duração máxima de 7 dias"),
   exercises: z.array(logExerciseInputSchema).min(1, "A sessão deve conter ao menos um exercício"),
 });
 
