@@ -66,6 +66,27 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="FitFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (("standalone" in window.navigator) && window.navigator.standalone) {
+                document.addEventListener("click", function(event) {
+                  var target = event.target;
+                  while (target && target.nodeName !== "A" && target.nodeName !== "HTML") {
+                    target = target.parentNode;
+                  }
+                  if (target && target.href && target.href.indexOf("http") !== -1 && target.href.indexOf(document.location.host) !== -1) {
+                    if (!target.target || target.target === "_self") {
+                      event.preventDefault();
+                      document.location.href = target.href;
+                    }
+                  }
+                }, false);
+              }
+            `,
+          }}
+        />
       </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans min-h-dvh overflow-x-hidden bg-background text-foreground antialiased`}

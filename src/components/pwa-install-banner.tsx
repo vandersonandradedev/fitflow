@@ -13,6 +13,7 @@ export function PwaInstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIos, setIsIos] = useState(false);
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+  const [isIosNonSafari, setIsIosNonSafari] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(true); // Abre direto com o guia no iOS para clareza
 
@@ -41,8 +42,10 @@ export function PwaInstallBanner() {
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     const isAndroidDevice = /android/.test(userAgent);
     const isInApp = /instagram|fbav|fban|whatsapp|line|micromessenger|telegram|snapchat/i.test(userAgent);
+    const isNonSafariOnIos = isIosDevice && (/crios|fxios|edgios|opios/.test(userAgent) || isInApp);
 
     setIsInAppBrowser(isInApp);
+    setIsIosNonSafari(isNonSafariOnIos);
 
     if (isIosDevice) {
       setIsIos(true);
@@ -145,6 +148,11 @@ export function PwaInstallBanner() {
       {/* Instruções passo a passo iOS Safari */}
       {isIos && showIosGuide && (
         <div className="mt-3 rounded-xl border border-border/80 bg-background/90 p-3 text-xs text-muted-foreground space-y-2">
+          {isIosNonSafari && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-[11px] text-amber-200">
+              ⚠️ <strong>Atenção no iPhone:</strong> Para instalar como aplicativo nativo em tela cheia (sem barra de navegador), você precisa abrir este link no <strong>Safari oficial</strong>. Se adicionar pelo Chrome ou WhatsApp, ele abre como atalho de navegador.
+            </div>
+          )}
           <p className="text-xs font-semibold text-foreground">
             Instalar na Tela de Início do iPhone:
           </p>
