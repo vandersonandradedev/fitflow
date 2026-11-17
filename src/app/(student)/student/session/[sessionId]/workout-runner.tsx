@@ -93,6 +93,9 @@ export function WorkoutRunner({
   initialExercises,
   lastPerformanceMap,
   studentName,
+  studentAvatarUrl,
+  tenantName,
+  coachName,
 }: {
   sessionId: string;
   dayName: string;
@@ -101,6 +104,9 @@ export function WorkoutRunner({
   initialExercises: RunnerExercise[];
   lastPerformanceMap: Record<string, LastPerformanceSet[]>;
   studentName?: string | null;
+  studentAvatarUrl?: string | null;
+  tenantName?: string | null;
+  coachName?: string | null;
 }) {
   const router = useRouter();
 
@@ -281,8 +287,12 @@ export function WorkoutRunner({
   }, 0);
 
   const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
+    const hrs = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
+    if (hrs > 0) {
+      return `${hrs}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
@@ -397,12 +407,12 @@ export function WorkoutRunner({
       const res = await finishSessionAction(payload);
       setIsSubmitting(false);
 
-      if (res.ok) {
+      if (res.ok || res.error?.includes("já foi concluída")) {
         await clearActiveSessionOffline(sessionId);
         setShowFinishModal(false);
         setShowCelebrationDialog(true);
       } else {
-        setSubmitError(res.message ?? "Erro ao salvar treino no servidor.");
+        setSubmitError(res.error || res.message || "Erro ao salvar treino no servidor.");
       }
     } catch {
       // Falha de rede catastrófica (queda de sinal na academia)
@@ -968,6 +978,9 @@ export function WorkoutRunner({
         data={{
           workoutName: dayName,
           studentName: studentName || "Aluno",
+          studentAvatarUrl,
+          coachName,
+          tenantName,
           dateStr: formatBrazilDate(new Date(), {
             weekday: "long",
             day: "2-digit",

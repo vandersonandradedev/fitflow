@@ -39,9 +39,15 @@ export function StoryCardDialog({
   const setOpen = onOpenChange || setInternalOpen;
 
   useEffect(() => {
+    let cancelled = false;
     if (open && canvasRef.current) {
-      drawStoryCard(canvasRef.current, data);
+      drawStoryCard(canvasRef.current, data).catch((err) => {
+        if (!cancelled) console.error("[StoryCard] Erro ao renderizar card:", err);
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [open, data]);
 
   const handleShare = async () => {

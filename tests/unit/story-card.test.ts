@@ -18,6 +18,9 @@ function createMockContext(): CanvasRenderingContext2D {
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     arcTo: vi.fn(),
+    arc: vi.fn(),
+    clip: vi.fn(),
+    drawImage: vi.fn(),
     closePath: vi.fn(),
     stroke: vi.fn(),
     fill: vi.fn(),
@@ -26,7 +29,7 @@ function createMockContext(): CanvasRenderingContext2D {
 }
 
 describe("Gerador de Cards para Instagram Stories (1080x1920)", () => {
-  it("inicializa as dimensões corretas do canvas (1080x1920) e desenha todos os elementos", () => {
+  it("inicializa as dimensões corretas do canvas (1080x1920) e desenha todos os elementos", async () => {
     const canvas = document.createElement("canvas");
     const mockCtx = createMockContext();
     vi.spyOn(canvas, "getContext").mockReturnValue(mockCtx);
@@ -45,7 +48,7 @@ describe("Gerador de Cards para Instagram Stories (1080x1920)", () => {
       isRecordVolume: true,
     };
 
-    drawStoryCard(canvas, data);
+    await drawStoryCard(canvas, data);
 
     expect(canvas.width).toBe(1080);
     expect(canvas.height).toBe(1920);
@@ -54,7 +57,7 @@ describe("Gerador de Cards para Instagram Stories (1080x1920)", () => {
     expect(mockCtx.fillRect).toHaveBeenCalled();
   });
 
-  it("renderiza corretamente mesmo sem dados opcionais e sem RPE", () => {
+  it("renderiza corretamente mesmo sem dados opcionais e sem RPE", async () => {
     const canvas = document.createElement("canvas");
     const mockCtx = createMockContext();
     vi.spyOn(canvas, "getContext").mockReturnValue(mockCtx);
@@ -69,7 +72,7 @@ describe("Gerador de Cards para Instagram Stories (1080x1920)", () => {
       totalSetsCount: 12,
     };
 
-    drawStoryCard(canvas, data);
+    await drawStoryCard(canvas, data);
 
     expect(canvas.width).toBe(1080);
     expect(canvas.height).toBe(1920);

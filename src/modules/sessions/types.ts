@@ -13,7 +13,13 @@ export const logSetInputSchema = z.object({
 
 export const logExerciseInputSchema = z.object({
   exerciseId: z.string().uuid("Exercício inválido"),
-  workoutExerciseId: z.string().uuid().optional(),
+  workoutExerciseId: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : undefined)),
   orderIndex: z.number().int().nonnegative().default(0),
   isCompleted: z.boolean().default(false),
   notes: z

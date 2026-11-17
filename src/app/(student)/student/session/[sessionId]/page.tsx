@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
 import {
   getLastPerformanceForExercises,
   getSessionDetails,
@@ -59,6 +60,12 @@ export default async function StudentSessionPage({
     })),
   }));
 
+  const coachMember = await prisma.tenantMember.findFirst({
+    where: { tenantId: ctx.tenantId, role: { in: ["OWNER", "COACH"] } },
+    include: { user: { select: { name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+
   return (
     <WorkoutRunner
       sessionId={session.id}
@@ -68,6 +75,9 @@ export default async function StudentSessionPage({
       initialExercises={runnerExercises}
       lastPerformanceMap={lastPerformanceMap}
       studentName={ctx.userName ?? "Aluno"}
+      studentAvatarUrl={ctx.userImage ?? null}
+      tenantName={ctx.tenantName ?? null}
+      coachName={coachMember?.user?.name ?? null}
     />
   );
 }

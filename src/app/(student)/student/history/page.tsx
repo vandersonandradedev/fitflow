@@ -12,11 +12,16 @@ import { ShareStoryButton } from "./share-story-button";
 
 export default async function StudentHistoryPage() {
   const ctx = await requireStudentContext();
-  const [sessions, studentUser] = await Promise.all([
+  const [sessions, studentUser, coachMember] = await Promise.all([
     listStudentSessionHistory(ctx),
     prisma.user.findUnique({
       where: { id: ctx.userId },
-      select: { name: true },
+      select: { name: true, image: true },
+    }),
+    prisma.tenantMember.findFirst({
+      where: { tenantId: ctx.tenantId, role: { in: ["OWNER", "COACH"] } },
+      include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
 
@@ -99,6 +104,9 @@ export default async function StudentHistoryPage() {
                       data={{
                         workoutName: session.trainingDay.name,
                         studentName: studentUser?.name ?? "Aluno",
+                        studentAvatarUrl: studentUser?.image ?? null,
+                        coachName: coachMember?.user?.name ?? null,
+                        tenantName: ctx.tenantName ?? null,
                         dateStr,
                         totalVolumeKg: volumeKg,
                         durationMinutes: durationMinutes ?? 45,
