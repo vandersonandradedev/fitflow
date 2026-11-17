@@ -6,6 +6,19 @@ import { AIEngagementAgent } from "@/modules/ai/engagement-agent";
 import { CreateNotificationInput, PushSubscriptionInput } from "./types";
 
 /**
+ * Retorna a hora atual no fuso de Brasília (0-23).
+ */
+function getBrazilHour(): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date())
+  );
+}
+
+/**
  * Salva ou atualiza uma inscrição de Web Push para o usuário logado.
  */
 export async function registerPushSubscription(
@@ -56,6 +69,8 @@ export async function createNotification(
   tenantId: string,
   input: CreateNotificationInput
 ) {
+  console.log(`[notify] Criando notificação type=${input.type} para userId=${input.userId} title="${input.title}"`);
+
   const notification = await prisma.notification.create({
     data: {
       tenantId,
@@ -67,14 +82,21 @@ export async function createNotification(
     },
   });
 
-  // Dispara Push Notification em background para o celular/dispositivo do usuário
-  sendPushToUser(input.userId, {
-    title: input.title,
-    body: input.message,
-    url: input.link,
-  }).catch((err) => {
+  // Dispara Push Notification e aguarda para garantir envio antes do término da execução serverless
+  try {
+    const pushResult = await sendPushToUser(input.userId, {
+      title: input.title,
+      body: input.message,
+      url: input.link,
+    });
+    if (pushResult.sent > 0) {
+      console.log(`[push] Push entregue para userId=${input.userId} (${pushResult.sent} dispositivo(s))`);
+    } else {
+      console.log(`[push] Nenhum dispositivo push inscrito para userId=${input.userId}`);
+    }
+  } catch (err) {
     console.error("[push] Falha ao disparar push em createNotification:", err);
-  });
+  }
 
   return notification;
 }
@@ -84,6 +106,15 @@ export async function createNotification(
  * Utiliza o Agente Autônomo de Engajamento para gerar mensagens dinâmicas e motivadoras.
  */
 export async function dispatchMorningWorkoutReminders() {
+  const brazilHour = getBrazilHour();
+  console.log(`[cron] dispatchMorningWorkoutReminders iniciado — hora BRT: ${brazilHour}`);
+
+  // Só dispara lembretes matinais entre 6h e 10h BRT
+  if (brazilHour < 6 || brazilHour > 10) {
+    console.log(`[cron] Fora do horário matinal (6-10 BRT), pulando lembretes matinais.`);
+    return { dispatchedCount: 0, skippedReason: "outside_morning_window" };
+  }
+
   const todayDow = getBrazilDayOfWeek();
 
   // Busca todos os programas ativos que possuem versão publicada com dia no DOW de hoje
@@ -123,6 +154,8 @@ export async function dispatchMorningWorkoutReminders() {
     },
   });
 
+  console.log(`[cron] Programas ativos encontrados para ${todayDow}: ${activePrograms.length}`);
+
   let dispatchedCount = 0;
 
   for (const prog of activePrograms) {
@@ -130,7 +163,7 @@ export async function dispatchMorningWorkoutReminders() {
     const trainingDay = prog.versions[0]?.trainingDays[0];
     if (!studentUser || !trainingDay) continue;
 
-    // Evita duplicar lembrete no mesmo dia (início do dia no fuso de Brasília)
+    // Evita duplicar lembrete no mesmo dia — verifica pelo TYPE, não pelo título
     const todayStart = getStartOfBrazilDay();
 
     const alreadySent = await prisma.notification.findFirst({
@@ -138,12 +171,13 @@ export async function dispatchMorningWorkoutReminders() {
         tenantId: prog.tenantId,
         userId: prog.studentProfile.userId,
         type: "WORKOUT_ASSIGNED",
-        title: { contains: "Treino" },
         createdAt: { gte: todayStart },
       },
     });
 
-    if (!alreadySent) {
+    if (alreadySent) {
+      console.log(`[cron] Lembrete matinal já enviado para userId=${prog.studentProfile.userId}, pulando.`);
+    } else {
       const aiMsg = await AIEngagementAgent.getMorningWorkoutReminder({
         studentName: studentUser.name || "Aluno",
         fitnessGoal: prog.studentProfile.fitnessGoal,
@@ -161,6 +195,7 @@ export async function dispatchMorningWorkoutReminders() {
     }
   }
 
+  console.log(`[cron] dispatchMorningWorkoutReminders concluído: ${dispatchedCount} enviados`);
   return { dispatchedCount };
 }
 
@@ -171,6 +206,7 @@ export async function dispatchMorningWorkoutReminders() {
 export async function dispatchEveningWorkoutReminders() {
   const todayDow = getBrazilDayOfWeek();
   const todayStart = getStartOfBrazilDay();
+  console.log(`[cron] dispatchEveningWorkoutReminders iniciado — DOW: ${todayDow}`);
 
   const activePrograms = await prisma.trainingProgram.findMany({
     where: {
@@ -216,6 +252,8 @@ export async function dispatchEveningWorkoutReminders() {
     },
   });
 
+  console.log(`[cron] Programas para lembrete noturno: ${activePrograms.length}`);
+
   let dispatchedCount = 0;
 
   for (const prog of activePrograms) {
@@ -226,18 +264,19 @@ export async function dispatchEveningWorkoutReminders() {
     const trainingDay = prog.versions[0]?.trainingDays[0];
     if (!studentUser || !trainingDay) continue;
 
-    // Evita duplicar lembrete de encerramento no mesmo dia
+    // Evita duplicar — verifica pelo TYPE dedicado, não pelo título
     const alreadySent = await prisma.notification.findFirst({
       where: {
         tenantId: prog.tenantId,
         userId: prog.studentProfile.userId,
-        type: "WORKOUT_ASSIGNED",
-        title: { startsWith: "Ainda dá tempo" },
+        type: "EVENING_WORKOUT_REMINDER",
         createdAt: { gte: todayStart },
       },
     });
 
-    if (!alreadySent) {
+    if (alreadySent) {
+      console.log(`[cron] Lembrete noturno já enviado para userId=${prog.studentProfile.userId}, pulando.`);
+    } else {
       const aiMsg = await AIEngagementAgent.getEveningPendingWorkoutReminder({
         studentName: studentUser.name || "Aluno",
         fitnessGoal: prog.studentProfile.fitnessGoal,
@@ -248,13 +287,14 @@ export async function dispatchEveningWorkoutReminders() {
         userId: prog.studentProfile.userId,
         title: aiMsg.title,
         message: aiMsg.message,
-        type: "WORKOUT_ASSIGNED",
+        type: "EVENING_WORKOUT_REMINDER",
         link: "/student/today",
       });
       dispatchedCount++;
     }
   }
 
+  console.log(`[cron] dispatchEveningWorkoutReminders concluído: ${dispatchedCount} enviados`);
   return { dispatchedCount };
 }
 
@@ -263,6 +303,7 @@ export async function dispatchEveningWorkoutReminders() {
  */
 export async function dispatchChurnAlerts() {
   const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
+  console.log(`[cron] dispatchChurnAlerts iniciado`);
 
   // Busca todos os alunos ativos
   const activeStudents = await prisma.studentProfile.findMany({
@@ -330,6 +371,7 @@ export async function dispatchChurnAlerts() {
     }
   }
 
+  console.log(`[cron] dispatchChurnAlerts concluído: ${alertsCount} alertas`);
   return { alertsCount };
 }
 
@@ -408,6 +450,8 @@ export async function notifyCoachOnSessionFinish(params: {
  */
 export async function dispatchWaterReminders() {
   const cutoff = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+  console.log(`[cron] dispatchWaterReminders iniciado`);
+
   const activeStudents = await prisma.studentProfile.findMany({
     where: { status: "ACTIVE" },
     select: {
@@ -425,7 +469,7 @@ export async function dispatchWaterReminders() {
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { contains: "Hidrat" },
+        type: "WATER_REMINDER",
         createdAt: { gte: cutoff },
       },
     });
@@ -440,13 +484,14 @@ export async function dispatchWaterReminders() {
         userId: student.userId,
         title: aiMsg.title,
         message: aiMsg.message,
-        type: "SYSTEM",
+        type: "WATER_REMINDER",
         link: "/student/today",
       });
       dispatchedCount++;
     }
   }
 
+  console.log(`[cron] dispatchWaterReminders concluído: ${dispatchedCount} enviados`);
   return { dispatchedCount };
 }
 
@@ -456,6 +501,8 @@ export async function dispatchWaterReminders() {
  */
 export async function dispatchNutritionReminders() {
   const todayStart = getStartOfBrazilDay();
+  console.log(`[cron] dispatchNutritionReminders iniciado`);
+
   const activeStudents = await prisma.studentProfile.findMany({
     where: { status: "ACTIVE" },
     select: {
@@ -473,7 +520,7 @@ export async function dispatchNutritionReminders() {
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { contains: "Nutri" },
+        type: "NUTRITION_REMINDER",
         createdAt: { gte: todayStart },
       },
     });
@@ -488,13 +535,14 @@ export async function dispatchNutritionReminders() {
         userId: student.userId,
         title: aiMsg.title,
         message: aiMsg.message,
-        type: "SYSTEM",
+        type: "NUTRITION_REMINDER",
         link: "/student/today",
       });
       dispatchedCount++;
     }
   }
 
+  console.log(`[cron] dispatchNutritionReminders concluído: ${dispatchedCount} enviados`);
   return { dispatchedCount };
 }
 
@@ -504,6 +552,8 @@ export async function dispatchNutritionReminders() {
  */
 export async function dispatchSleepReminders() {
   const todayStart = getStartOfBrazilDay();
+  console.log(`[cron] dispatchSleepReminders iniciado`);
+
   const activeStudents = await prisma.studentProfile.findMany({
     where: { status: "ACTIVE" },
     select: {
@@ -521,7 +571,7 @@ export async function dispatchSleepReminders() {
       where: {
         tenantId: student.tenantId,
         userId: student.userId,
-        title: { contains: "Sono" },
+        type: "SLEEP_REMINDER",
         createdAt: { gte: todayStart },
       },
     });
@@ -536,13 +586,14 @@ export async function dispatchSleepReminders() {
         userId: student.userId,
         title: aiMsg.title,
         message: aiMsg.message,
-        type: "SYSTEM",
+        type: "SLEEP_REMINDER",
         link: "/student/today",
       });
       dispatchedCount++;
     }
   }
 
+  console.log(`[cron] dispatchSleepReminders concluído: ${dispatchedCount} enviados`);
   return { dispatchedCount };
 }
 
@@ -553,6 +604,8 @@ export async function dispatchSleepReminders() {
 export async function dispatchHabitReminders(
   mode: "AUTO" | "WATER" | "NUTRITION" | "SLEEP" | "EVENING" | "ALL" = "AUTO"
 ) {
+  console.log(`[cron] dispatchHabitReminders mode=${mode}`);
+
   if (mode === "WATER") {
     return dispatchWaterReminders();
   }
@@ -581,14 +634,8 @@ export async function dispatchHabitReminders(
   }
 
   // Modo AUTO: determina o lembrete adequado pelo fuso horário de Brasília
-  const now = new Date();
-  const brazilHour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(now)
-  );
+  const brazilHour = getBrazilHour();
+  console.log(`[cron] AUTO mode — hora BRT: ${brazilHour}`);
 
   if (brazilHour >= 21) {
     // 21h em diante: Sono reparador e desaceleração

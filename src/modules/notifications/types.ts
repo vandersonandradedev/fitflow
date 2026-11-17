@@ -19,6 +19,10 @@ export const createNotificationSchema = z.object({
     "INVITE",
     "SYSTEM",
     "CHURN_ALERT",
+    "WATER_REMINDER",
+    "NUTRITION_REMINDER",
+    "SLEEP_REMINDER",
+    "EVENING_WORKOUT_REMINDER",
   ]).default("SYSTEM"),
   link: z.string().max(500).optional(),
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -10,6 +10,7 @@ import {
   Clock,
   MessageSquare,
   Play,
+  Smartphone,
   WifiOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +133,51 @@ export function WorkoutRunner({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Wake Lock — mantém a tela ligada durante o treino
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ("wakeLock" in navigator) {
+        const sentinel = await navigator.wakeLock.request("screen");
+        wakeLockRef.current = sentinel;
+        setWakeLockActive(true);
+        sentinel.addEventListener("release", () => {
+          setWakeLockActive(false);
+          wakeLockRef.current = null;
+        });
+      }
+    } catch {
+      // Wake Lock pode falhar se a aba não estiver visível ou o navegador não suportar
+      setWakeLockActive(false);
+    }
+  }, []);
+
+  // Solicita Wake Lock ao montar e libera ao desmontar
+  useEffect(() => {
+    requestWakeLock();
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, [requestWakeLock]);
+
+  // Re-adquire Wake Lock quando o usuário volta para a aba
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !wakeLockRef.current) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [requestWakeLock]);
+
   // Inicializa conexão de rede e carrega dados locais
   useEffect(() => {
     if (typeof navigator !== "undefined") {
@@ -177,13 +223,43 @@ export function WorkoutRunner({
 
   useEffect(() => {
     const start = new Date(startedAtIso).getTime();
+    const originalTitle = document.title;
     const syncElapsed = () => {
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+      const secs = Math.max(0, Math.floor((Date.now() - start) / 1000));
+      setElapsedSeconds(secs);
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      const formatted = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+      document.title = `${formatted} - ${dayName} | FitFlow`;
+
+      // Atualiza tela de bloqueio do celular via Media Session API
+      if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: `Treino: ${dayName}`,
+            artist: `⏱️ ${formatted} decorridos | FitFlow`,
+            album: "FitFlow Treino Ativo",
+            artwork: [
+              { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+              { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+            ],
+          });
+          navigator.mediaSession.playbackState = "playing";
+        } catch {}
+      }
     };
     syncElapsed();
     const timer = setInterval(syncElapsed, 1000);
-    return () => clearInterval(timer);
-  }, [startedAtIso]);
+    return () => {
+      clearInterval(timer);
+      document.title = originalTitle;
+      if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+        try {
+          navigator.mediaSession.playbackState = "none";
+        } catch {}
+      }
+    };
+  }, [startedAtIso, dayName]);
 
 
 
@@ -268,6 +344,12 @@ export function WorkoutRunner({
     setIsSubmitting(true);
     setSubmitError(null);
 
+    // Libera Wake Lock ao finalizar o treino
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+
     const payload = {
       sessionId,
       totalDurationSeconds: Math.min(Math.max(1, elapsedSeconds), 604800),
@@ -336,6 +418,25 @@ export function WorkoutRunner({
           <div className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-primary">
             <Clock className="h-4 w-4 shrink-0" />
             <span>{formatTime(elapsedSeconds)}</span>
+            {wakeLockActive ? (
+              <span
+                title="Tela permanecerá ligada durante todo o treino (Wake Lock ativo)"
+                className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400"
+              >
+                <Smartphone className="h-3 w-3 shrink-0" />
+                <span className="hidden sm:inline">Tela ativa</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={requestWakeLock}
+                title="Clique para manter a tela sempre ligada durante o treino"
+                className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                <Smartphone className="h-3 w-3 shrink-0" />
+                <span className="hidden sm:inline">Manter tela</span>
+              </button>
+            )}
           </div>
           <span className="text-border">|</span>
           <span className="font-mono text-xs tabular-nums text-muted-foreground truncate">
