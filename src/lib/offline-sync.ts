@@ -9,19 +9,52 @@
 
 import { FinishSessionInput } from "@/modules/sessions/types";
 
-const DB_NAME = "fitflow_offline_v1";
+const DB_NAME = "fitflow_offline_v2";
 const STORE_ACTIVE = "active_sessions";
 const STORE_QUEUE = "pending_finish_queue";
+const STORE_WORKOUT_CACHE = "today_workout_cache";
 
-interface QueuedFinishSession {
+export interface QueuedFinishSession {
   id: string; // sessionId
   payload: FinishSessionInput;
   queuedAt: string;
   retryCount: number;
 }
 
+export interface CachedWorkoutSet {
+  id?: string;
+  setNumber: number;
+  repsTarget: string;
+  suggestedLoadKg?: number | null;
+  restSeconds: number;
+}
+
+export interface CachedWorkoutExercise {
+  id?: string;
+  exerciseId: string;
+  workoutExerciseId?: string | null;
+  name: string;
+  primaryMuscleGroup: string;
+  categoryName: string;
+  mediaUrl?: string | null;
+  coachNotes?: string | null;
+  instructions: Array<{ stepNumber: number; instruction: string; safetyTip?: string | null }>;
+  sets: CachedWorkoutSet[];
+}
+
+export interface CachedTodayWorkout {
+  trainingDayId: string;
+  dayName: string;
+  dayDescription?: string | null;
+  programTitle: string;
+  programGoal?: string | null;
+  versionNumber: number;
+  exercises: CachedWorkoutExercise[];
+  updatedAt: string;
+}
+
 /**
- * Abre o banco IndexedDB de forma segura com suporte a fallback.
+ * Abre o banco IndexedDB de forma segura com suporte a migrações e fallback.
  */
 function openIndexedDB(): Promise<IDBDatabase | null> {
   if (typeof window === "undefined" || !window.indexedDB) {
@@ -30,7 +63,7 @@ function openIndexedDB(): Promise<IDBDatabase | null> {
 
   return new Promise((resolve) => {
     try {
-      const request = window.indexedDB.open(DB_NAME, 1);
+      const request = window.indexedDB.open(DB_NAME, 2);
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
@@ -39,6 +72,9 @@ function openIndexedDB(): Promise<IDBDatabase | null> {
         }
         if (!db.objectStoreNames.contains(STORE_QUEUE)) {
           db.createObjectStore(STORE_QUEUE, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(STORE_WORKOUT_CACHE)) {
+          db.createObjectStore(STORE_WORKOUT_CACHE, { keyPath: "trainingDayId" });
         }
       };
 
@@ -51,15 +87,74 @@ function openIndexedDB(): Promise<IDBDatabase | null> {
 }
 
 /**
+ * Armazena a rotina do treino de hoje no cache local para uso offline.
+ */
+export async function cacheTodayWorkoutOffline(workout: CachedTodayWorkout): Promise<void> {
+  try {
+    localStorage.setItem("fitflow_cached_today_workout", JSON.stringify(workout));
+  } catch {}
+
+  const db = await openIndexedDB();
+  if (!db) return;
+
+  try {
+    const tx = db.transaction(STORE_WORKOUT_CACHE, "readwrite");
+    const store = tx.objectStore(STORE_WORKOUT_CACHE);
+    store.put(workout);
+  } catch {}
+}
+
+/**
+ * Recupera o treino de hoje em cache quando o dispositivo estiver offline.
+ */
+export async function getCachedTodayWorkoutOffline(
+  trainingDayId?: string
+): Promise<CachedTodayWorkout | null> {
+  const db = await openIndexedDB();
+  if (db) {
+    try {
+      const result = await new Promise<CachedTodayWorkout | undefined>((resolve) => {
+        const tx = db.transaction(STORE_WORKOUT_CACHE, "readonly");
+        const store = tx.objectStore(STORE_WORKOUT_CACHE);
+        if (trainingDayId) {
+          const req = store.get(trainingDayId);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(undefined);
+        } else {
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = req.result as CachedTodayWorkout[];
+            resolve(list && list.length > 0 ? list[list.length - 1] : undefined);
+          };
+          req.onerror = () => resolve(undefined);
+        }
+      });
+
+      if (result) return result;
+    } catch {}
+  }
+
+  // Fallback LocalStorage
+  try {
+    const cached = localStorage.getItem("fitflow_cached_today_workout");
+    if (cached) {
+      return JSON.parse(cached) as CachedTodayWorkout;
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
  * Salva o estado em tempo real da sessão em andamento.
  */
 export async function saveActiveSessionOffline(
   sessionId: string,
   exercises: unknown
 ): Promise<void> {
-  // Salva no localStorage como redundância imediata
   try {
     localStorage.setItem(`fitflow_session_${sessionId}`, JSON.stringify(exercises));
+    localStorage.setItem("fitflow_last_active_session_id", sessionId);
   } catch {}
 
   const db = await openIndexedDB();
@@ -109,11 +204,23 @@ export async function loadActiveSessionOffline<T>(sessionId: string): Promise<T 
 }
 
 /**
+ * Retorna o ID da sessão ativa em andamento (se houver).
+ */
+export function getActiveOfflineSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("fitflow_last_active_session_id");
+}
+
+/**
  * Limpa a sessão em andamento após finalização ou descarte.
  */
 export async function clearActiveSessionOffline(sessionId: string): Promise<void> {
   try {
     localStorage.removeItem(`fitflow_session_${sessionId}`);
+    const lastActive = localStorage.getItem("fitflow_last_active_session_id");
+    if (lastActive === sessionId) {
+      localStorage.removeItem("fitflow_last_active_session_id");
+    }
   } catch {}
 
   const db = await openIndexedDB();
@@ -232,7 +339,7 @@ export async function syncPendingSessionsOffline(
       } else {
         // Se for erro definitivo (ex: já finalizada), remove para não travar a fila
         if (
-          res.message?.includes("já foi finalizada") ||
+          res.message?.includes("já foi concluída") ||
           res.message?.includes("não encontrada")
         ) {
           await removePendingSessionOffline(item.id);

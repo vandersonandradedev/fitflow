@@ -36,7 +36,8 @@ export const startSessionSchema = z.object({
 });
 
 export const finishSessionSchema = z.object({
-  sessionId: z.string().uuid("Sessão inválida"),
+  sessionId: z.string().min(1, "Sessão inválida"),
+  trainingDayId: z.string().uuid().optional(),
   perceivedExertionRpe: z.number().int().min(1).max(10).optional(),
   studentFeedback: z
     .string()

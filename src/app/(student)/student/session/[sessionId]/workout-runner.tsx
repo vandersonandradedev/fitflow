@@ -87,6 +87,7 @@ const RPE_DESCRIPTIONS: Record<number, string> = {
 
 export function WorkoutRunner({
   sessionId,
+  trainingDayId,
   dayName,
   dayDescription,
   startedAtIso,
@@ -96,17 +97,20 @@ export function WorkoutRunner({
   studentAvatarUrl,
   tenantName,
   coachName,
+  onFinishOffline,
 }: {
   sessionId: string;
+  trainingDayId?: string;
   dayName: string;
   dayDescription?: string | null;
   startedAtIso: string;
   initialExercises: RunnerExercise[];
-  lastPerformanceMap: Record<string, LastPerformanceSet[]>;
+  lastPerformanceMap?: Record<string, LastPerformanceSet[]>;
   studentName?: string | null;
   studentAvatarUrl?: string | null;
   tenantName?: string | null;
   coachName?: string | null;
+  onFinishOffline?: () => void;
 }) {
   const router = useRouter();
 
@@ -270,7 +274,7 @@ export function WorkoutRunner({
 
 
   const activeExercise = exercises[activeExerciseIndex] ?? exercises[0];
-  const lastSets = activeExercise ? lastPerformanceMap[activeExercise.exerciseId] ?? [] : [];
+  const lastSets = activeExercise && lastPerformanceMap ? lastPerformanceMap[activeExercise.exerciseId] ?? [] : [];
 
   const totalSetsCount = exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
   const completedSetsCount = exercises.reduce(
@@ -362,6 +366,7 @@ export function WorkoutRunner({
 
     const payload = {
       sessionId,
+      trainingDayId,
       totalDurationSeconds: Math.min(Math.max(1, elapsedSeconds), 604800),
       perceivedExertionRpe: rpe,
       studentFeedback: studentFeedback.trim() || undefined,
@@ -393,7 +398,11 @@ export function WorkoutRunner({
       setIsSubmitting(false);
       setOfflineSavedNotification(true);
       setTimeout(() => {
-        router.push("/student/history");
+        if (onFinishOffline) {
+          onFinishOffline();
+        } else {
+          router.push("/student/history");
+        }
       }, 1600);
     };
 

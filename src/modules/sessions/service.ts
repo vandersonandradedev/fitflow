@@ -243,7 +243,7 @@ export async function finishWorkoutSession(
   assertStudent(ctx);
   const data = parseInput(finishSessionSchema, rawInput);
 
-  const session = await prisma.workoutSession.findFirst({
+  let session = await prisma.workoutSession.findFirst({
     where: {
       id: data.sessionId,
       tenantId: ctx.tenantId,
@@ -258,7 +258,48 @@ export async function finishWorkoutSession(
   });
 
   if (!session) {
-    throw new NotFoundError("Sessão de treino não encontrada.");
+    if (!data.trainingDayId) {
+      throw new NotFoundError("Sessão de treino não encontrada.");
+    }
+
+    // Sessão iniciada e executada offline: cria o registro no banco agora
+    const trainingDay = await prisma.trainingDay.findFirst({
+      where: {
+        id: data.trainingDayId,
+        version: {
+          program: {
+            tenantId: ctx.tenantId,
+            studentProfileId: ctx.studentProfileId!,
+          },
+        },
+      },
+      include: {
+        version: { select: { id: true } },
+      },
+    });
+
+    if (!trainingDay) {
+      throw new NotFoundError("Dia de treino não encontrado para este aluno.");
+    }
+
+    const startedAt = new Date(Date.now() - data.totalDurationSeconds * 1000);
+
+    session = await prisma.workoutSession.create({
+      data: {
+        tenantId: ctx.tenantId,
+        studentProfileId: ctx.studentProfileId!,
+        trainingDayId: trainingDay.id,
+        programVersionId: trainingDay.version.id,
+        status: "IN_PROGRESS",
+        startedAt,
+      },
+      include: {
+        trainingDay: { select: { name: true } },
+        studentProfile: {
+          include: { user: { select: { name: true, email: true } } },
+        },
+      },
+    });
   }
 
   if (session.status === "COMPLETED") {

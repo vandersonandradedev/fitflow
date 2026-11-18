@@ -1,22 +1,34 @@
-// FitFlow PWA Service Worker — Offline Support & Web Push
-const CACHE_NAME = "fitflow-pwa-v3";
-const STATIC_ASSETS = [
+// FitFlow PWA Service Worker — Offline-First Engine & Web Push
+const CACHE_NAME = "fitflow-pwa-v4";
+
+const PRECACHE_ASSETS = [
   "/manifest.json",
   "/favicon.ico",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/sounds/radar.wav",
+  "/student/today",
+  "/~offline",
 ];
 
+// Instalação: Pré-cacheia o App Shell, sons e telas principais
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {});
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Pré-cache com tolerância a falhas individuais
+      await Promise.allSettled(
+        PRECACHE_ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn("[SW] Falha ao pré-cachear:", url, err);
+          })
+        )
+      );
     })
   );
   self.skipWaiting();
 });
 
+// Ativação: Limpa versões obsoletas do cache
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -28,76 +40,161 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Intercepta SOMENTE assets estáticos imutáveis (_next/static, icons, images)
-// NUNCA intercepta páginas HTML, navegações, Server Actions, auth ou rotas dinâmicas
+/**
+ * Executa fetch com timeout para não prender o usuário em conexões 2G/3G instáveis
+ */
+function fetchWithTimeout(request, timeoutMs = 2500) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Network timeout"));
+    }, timeoutMs);
+
+    fetch(request)
+      .then((response) => {
+        clearTimeout(timer);
+        resolve(response);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 self.addEventListener("fetch", (event) => {
-  // Ignora métodos que não sejam GET
+  // Ignora métodos que não sejam GET (Server Actions, POST/PUT/DELETE)
   if (event.request.method !== "GET") {
     return;
   }
 
   const url = new URL(event.request.url);
 
-  // Ignora origens externas
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // NUNCA intercepta navegações, RSC, Server Actions, APIs ou páginas dinâmicas/autenticadas
+  // Ignora chamadas de autenticação sensíveis e crons
   if (
-    event.request.mode === "navigate" ||
-    event.request.headers.get("accept")?.includes("text/html") ||
-    event.request.headers.get("rsc") === "1" ||
-    event.request.headers.get("next-router-prefetch") ||
-    event.request.headers.get("next-action") ||
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/coach") ||
-    url.pathname.startsWith("/student") ||
-    url.pathname.startsWith("/login") ||
-    url.pathname.startsWith("/register") ||
-    url.pathname.startsWith("/invite") ||
-    url.pathname.startsWith("/verify-email") ||
-    url.pathname.startsWith("/forgot-password") ||
-    url.pathname.startsWith("/reset-password") ||
-    url.pathname.includes("/_next/webpack-hmr") ||
-    url.pathname.includes("/_next/image")
+    url.pathname.startsWith("/api/auth/") ||
+    url.pathname.startsWith("/api/cron/") ||
+    url.pathname.includes("/_next/webpack-hmr")
   ) {
-    return; // Passa direto para o navegador lidar nativamente com cookies e redirecionamentos
-  }
-
-  // Apenas faz cache de assets estáticos conhecidos
-  const isStaticAsset =
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/icons/") ||
-    url.pathname.startsWith("/images/") ||
-    url.pathname.startsWith("/sounds/") ||
-    url.pathname === "/favicon.ico" ||
-    url.pathname === "/manifest.json";
-
-  if (!isStaticAsset) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request)
+  const isSameOrigin = url.origin === self.location.origin;
+
+  // 1. Assets Estáticos Imutáveis (_next/static, sons, ícones) -> CacheFirst
+  const isStaticAsset =
+    isSameOrigin &&
+    (url.pathname.startsWith("/_next/static/") ||
+      url.pathname.startsWith("/icons/") ||
+      url.pathname.startsWith("/sounds/") ||
+      url.pathname === "/favicon.ico" ||
+      url.pathname === "/manifest.json");
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkRes;
+        });
+      })
+    );
+    return;
+  }
+
+  // 2. Navegação de Páginas HTML (Documentos) -> NetworkFirst com fallback offline
+  const isNavigation =
+    event.request.mode === "navigate" ||
+    (event.request.headers.get("accept") &&
+      event.request.headers.get("accept").includes("text/html"));
+
+  if (isNavigation && isSameOrigin) {
+    event.respondWith(
+      fetchWithTimeout(event.request, 2500)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone);
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return networkResponse;
         })
-        .catch(() => {
-          return cachedResponse || new Response(null, { status: 404 });
-        });
-    })
-  );
+        .catch(async () => {
+          // Tenta a página solicitada no cache
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+
+          // Se for rota de aluno, entrega o treino de hoje em cache
+          if (url.pathname.startsWith("/student")) {
+            const studentToday = await caches.match("/student/today");
+            if (studentToday) return studentToday;
+          }
+
+          // Fallback universal para página offline dedicada
+          const offlinePage = await caches.match("/~offline");
+          if (offlinePage) return offlinePage;
+
+          return new Response("FitFlow Offline — Sem conexão à rede", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        })
+    );
+    return;
+  }
+
+  // 3. Payloads de Navegação Interna Next.js RSC (headers RSC: 1 ou query _rsc) -> NetworkFirst
+  const isRscRequest =
+    isSameOrigin &&
+    (event.request.headers.get("rsc") === "1" ||
+      url.searchParams.has("_rsc") ||
+      event.request.headers.get("next-router-prefetch"));
+
+  if (isRscRequest) {
+    event.respondWith(
+      fetchWithTimeout(event.request, 2000)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return new Response("", { status: 200, headers: { "Content-Type": "text/x-component" } });
+        })
+    );
+    return;
+  }
+
+  // 4. Imagens e Mídias de Exercícios -> StaleWhileRevalidate
+  const isImageOrMedia =
+    url.pathname.startsWith("/images/") ||
+    url.pathname.startsWith("/_next/image") ||
+    /\.(png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname);
+
+  if (isImageOrMedia) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request)
+          .then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              const clone = networkRes.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            }
+            return networkRes;
+          })
+          .catch(() => cached);
+
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
 });
 
 // Listener de Notificações Web Push

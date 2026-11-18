@@ -69,6 +69,7 @@ export default async function StudentSessionPage({
   return (
     <WorkoutRunner
       sessionId={session.id}
+      trainingDayId={session.trainingDay.id}
       dayName={session.trainingDay.name}
       dayDescription={session.trainingDay.description}
       startedAtIso={session.startedAt.toISOString()}

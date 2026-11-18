@@ -15,7 +15,7 @@ import {
   type DayOfWeekInput,
 } from "@/modules/workouts/types";
 import { requireStudentContext } from "@/server/auth/session";
-import { startSessionAction } from "../session/actions";
+import { StudentTodayOfflineManager } from "@/components/student-today-offline-manager";
 
 export default async function StudentTodayPage({
   searchParams,
@@ -59,6 +59,7 @@ export default async function StudentTodayPage({
                     coachNotes: true,
                     exercise: {
                       select: {
+                        id: true,
                         name: true,
                         primaryMuscleGroup: true,
                         category: { select: { name: true } },
@@ -171,6 +172,30 @@ export default async function StudentTodayPage({
     trainingDay && (trainingDay.dayOfWeek === todayDow || trainingDay.dayOfWeek === "ANY")
   );
 
+  const runnerExercises = trainingDay
+    ? trainingDay.workoutExercises.map((item) => ({
+        id: item.id,
+        exerciseId: item.exercise.id,
+        workoutExerciseId: item.id,
+        name: item.exercise.name,
+        primaryMuscleGroup: item.exercise.primaryMuscleGroup,
+        categoryName: item.exercise.category.name,
+        mediaUrl: item.exercise.media[0]?.url ?? null,
+        coachNotes: item.coachNotes,
+        instructions: item.exercise.instructions,
+        sets: item.sets.map((s) => ({
+          id: s.id,
+          setNumber: s.setNumber,
+          prescribedLoadKg: s.suggestedLoadKg ? Number(s.suggestedLoadKg) : null,
+          actualLoadKg: s.suggestedLoadKg ? Number(s.suggestedLoadKg) : 0,
+          prescribedReps: s.repsTarget,
+          actualReps: parseInt(s.repsTarget, 10) || 10,
+          completed: false,
+          restTakenSeconds: s.restSeconds,
+        })),
+      }))
+    : [];
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
@@ -279,22 +304,22 @@ export default async function StudentTodayPage({
               )}
             </div>
 
-            {inProgressSession && inProgressSession.trainingDayId === trainingDay.id ? (
-              <Link href={`/student/session/${inProgressSession.id}`} className="block">
-                <Button size="touch" className="w-full">
-                  <Play className="h-4 w-4 fill-current" />
-                  Continuar treino em andamento
-                </Button>
-              </Link>
-            ) : (
-              <form action={startSessionAction}>
-                <input type="hidden" name="trainingDayId" value={trainingDay.id} />
-                <Button type="submit" size="touch" className="w-full">
-                  <Play className="h-4 w-4 fill-current" />
-                  Iniciar treino agora
-                </Button>
-              </form>
-            )}
+            <StudentTodayOfflineManager
+              trainingDayId={trainingDay.id}
+              dayName={trainingDay.name}
+              dayDescription={trainingDay.description}
+              programTitle={activeProgram.title}
+              programGoal={activeProgram.goal}
+              versionNumber={publishedVersion.versionNumber}
+              exercises={runnerExercises}
+              inProgressSessionId={
+                inProgressSession && inProgressSession.trainingDayId === trainingDay.id
+                  ? inProgressSession.id
+                  : null
+              }
+              studentName={ctx.userName}
+              tenantName={ctx.tenantName}
+            />
           </section>
 
           {/* Day Switcher (Cronológico com indicador HOJE) */}
